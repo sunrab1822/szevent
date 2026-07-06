@@ -1,11 +1,13 @@
 services:
   db:
     image: mysql:8.0
+    networks:
+      - szevent-internal
     environment:
-      MYSQL_DATABASE: laravel
-      MYSQL_USER: laravel
-      MYSQL_PASSWORD: secret # Élesben ezt a Portainerből add át biztonságosan!
-      MYSQL_ROOT_PASSWORD: rootsecret
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-laravel}
+      MYSQL_USER: ${MYSQL_USER:-laravel}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD} # Élesben ezt a Portainerből add át biztonságosan!
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD} 
     volumes:
       - db_prod_data:/var/lib/mysql
     ports:
@@ -19,20 +21,31 @@ services:
 
   backend:
     image: placeholder_backend
+    networks:
+      - szevent-internal
     depends_on:
       db:
         condition: service_healthy
     environment:
       APP_ENV: production
       DB_HOST: db
-      DB_DATABASE: laravel
-      DB_USERNAME: laravel
-      DB_PASSWORD: secret
+      DB_DATABASE: ${MYSQL_DATABASE:-laravel}
+      DB_USERNAME: ${MYSQL_USER:-laravel}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_HOST: ${MAIL_HOST:-smtp.sze.hu}
+      MAIL_PORT: ${MAIL_PORT:-25}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-rendezveny.szervezes@sze.hu}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-${APP_NAME}}
     restart: always
 
   scheduler:
     image: placeholder_backend # Ugyanaz a kép, mint a backend
     command: [ "scheduler" ]
+    networks:
+      - szevent-internal
     depends_on:
       db:
         condition: service_healthy
@@ -41,18 +54,50 @@ services:
     environment:
       APP_ENV: production
       DB_HOST: db
-      DB_DATABASE: laravel
-      DB_USERNAME: laravel
-      DB_PASSWORD: secret
+      DB_DATABASE: ${MYSQL_DATABASE:-laravel}
+      DB_USERNAME: ${MYSQL_USER:-laravel}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
     restart: unless-stopped
 
   frontend:
     image: placeholder_frontend
-    ports:
-      - "80:80"
     depends_on:
       - backend
     restart: always
+    environment:
+      VITE_API_ORIGIN: http://backend:9000
+      VITE_AUTH_TOKEN: Z4lyXdXX1foY0NidulzkkFZC
+    networks:
+      - traefik-public
+      - szevent-internal
+    deploy:
+      labels:
+        - traefik.enable=true
+        - traefik.swarm.network=traefik-public
+
+        - traefik.http.routers.szevent.rule=Host(`${PUBLIC_HOST}`)
+        - traefik.http.routers.szevent.entrypoints=websecure
+        - traefik.http.routers.szevent.tls=true
+        - traefik.http.routers.szevent.tls.certresolver=le
+        - traefik.http.routers.szevent.service=szevent
+
+        - traefik.http.services.szevent.loadbalancer.server.port=80
+        - traefik.http.services.szevent.loadbalancer.passhostheader=true
+
 
 volumes:
   db_prod_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NFS_ADDR},rw,nfsvers=4
+      device: :${NFS_BASE_PATH}/szevent/db_data
+
+
+networks:
+  traefik-public:
+    external: true
+
+  szevent-internal:
+    driver: overlay
+    internal: true
