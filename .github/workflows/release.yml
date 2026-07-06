@@ -93,26 +93,62 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
+      ```
       - name: Sync Deploy Branch and Update Stack
+        shell: bash
         run: |
-          set -eu
-          
+          set -euo pipefail
+
           export FRONTEND_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.ref_name }}"
           export BACKEND_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.ref_name }}"
-          
-          git fetch origin ${{ env.DEPLOY_BRANCH }}
-          git checkout -B ${{ env.DEPLOY_BRANCH }} origin/${{ env.DEPLOY_BRANCH }}
-          
-          git merge --no-edit origin/main
 
-          yq -i '.services.frontend.image = env(FRONTEND_IMAGE) | .services.backend.image = env(BACKEND_IMAGE) | .services.scheduler.image = env(BACKEND_IMAGE)' "$STACK_FILE"
-          
+          echo "Fetching deployment branch and main"
+          git fetch origin main "${{ env.DEPLOY_BRANCH }}" --tags
+
+          echo "Checking out ${{ env.DEPLOY_BRANCH }}"
+          git checkout -B "${{ env.DEPLOY_BRANCH }}" "origin/${{ env.DEPLOY_BRANCH }}"
+
+          echo "Syncing ${{ env.DEPLOY_BRANCH }} with origin/main"
+          if ! git merge --no-edit origin/main; then
+            echo "Merge conflict detected"
+
+            CONFLICTS="$(git diff --name-only --diff-filter=U)"
+
+            if [ "$CONFLICTS" = "$STACK_FILE" ]; then
+              echo "Auto-resolving $STACK_FILE using the origin/main version"
+
+              # While merging origin/main into deploy:
+              # --theirs means the origin/main version.
+              git checkout --theirs "$STACK_FILE"
+              git add "$STACK_FILE"
+
+              git commit --no-edit
+            else
+              echo "ERROR: merge conflicts found outside $STACK_FILE"
+              echo "$CONFLICTS"
+              exit 1
+            fi
+          fi
+
+          echo "Updating image references in $STACK_FILE"
+          echo "Frontend: $FRONTEND_IMAGE"
+          echo "Backend:  $BACKEND_IMAGE"
+
+          yq -i '
+            .services.frontend.image = env(FRONTEND_IMAGE) |
+            .services.backend.image = env(BACKEND_IMAGE) |
+            .services.scheduler.image = env(BACKEND_IMAGE)
+          ' "$STACK_FILE"
+
           git add "$STACK_FILE"
 
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "No stack changes after merge and image update"
             exit 0
           fi
 
-          git commit -m "chore(deploy): release monorepo ${{ github.ref_name }} [skip ci]"
-          git push origin HEAD:${{ env.DEPLOY_BRANCH }}
+          git commit -m "chore(deploy): release ${{ github.ref_name }} from ${{ github.sha }} [skip ci]"
+          git push origin HEAD:"${{ env.DEPLOY_BRANCH }}"
+
+          echo "Deployment branch updated successfully"
+    ```
