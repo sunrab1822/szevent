@@ -10,12 +10,6 @@ run_command() {
     fi
 }
 
-# Install vendor if missing (happens when volume mount overwrites build)
-if [ ! -f /var/www/vendor/autoload.php ]; then
-    echo "vendor/ not found, running composer install..."
-    run_command "composer install --optimize-autoloader --no-dev"
-fi
-
 run_command "php artisan key:generate --no-interaction"
 run_command "php artisan storage:link --no-interaction"
 run_command "php artisan migrate --force"

@@ -19,19 +19,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         zip \
     && rm -rf /var/lib/apt/lists/*
 
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
 # Install Composer binary
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-COPY . .
+COPY composer.json composer.lock ./
 
-# Only needed if vendor is NOT copied/prebuilt already:
-# RUN composer install \
-#     --no-dev \
-#     --prefer-dist \
-#     --no-interaction \
-#     --optimize-autoloader
+RUN composer install \
+    --no-dev \
+    --prefer-dist \
+    --no-interaction \
+    --optimize-autoloader
+
+COPY . .
 
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
     && chmod +x ./scripts/docker_entry.sh
