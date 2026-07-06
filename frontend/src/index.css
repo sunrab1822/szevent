@@ -1,0 +1,27 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap");
+
+@import "tailwindcss";
+
+@theme {
+    --font-sans:
+        "Montserrat", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+@theme {
+    --breakpoint-desktop: 1440px;
+    --breakpoint-sidebar: 1200px;
+    --breakpoint-tablet: 1024px;
+    --breakpoint-mobile: 640px;
+
+    --max-width-desktop: 1440px;
+
+    --color-primary-dark: #242943;
+    --color-primary-light: #50adc9;
+    --color-dark: #111421;
+
+    --color-white-bg: #f3f3f3;
+}
+
+body {
+    color: var(--color-dark);
+}

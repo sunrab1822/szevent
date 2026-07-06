@@ -1,0 +1,4 @@
+public/storage
+.env
+node_modules
+.git

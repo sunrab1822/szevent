@@ -1,0 +1,427 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "My Laravel API",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "localhost",
+            "description": "Local Server"
+        }
+    ],
+    "paths": {
+        "/api/events": {
+            "get": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Get all events",
+                "operationId": "837edd078e5ba80386b0b0bad4f64342",
+                "responses": {
+                    "200": {
+                        "description": "A list of events",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "events": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "-": {
+                                                        "type": "events_all attribute"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/api/create-event": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Create a new event",
+                "operationId": "4cf5e0d77ec7085c5b2d6faab52be7ec",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "description",
+                                    "location",
+                                    "address",
+                                    "startDate",
+                                    "endDate",
+                                    "qualification",
+                                    "participants",
+                                    "public",
+                                    "nature",
+                                    "detailedProgramPlan",
+                                    "furnishedMethod",
+                                    "needAccommodation",
+                                    "needParkingSpace",
+                                    "producesTrash",
+                                    "producesTrashDeliveryWhoDelivers",
+                                    "needWifi",
+                                    "needEducationalTechnology",
+                                    "participantsWithReducedMobility",
+                                    "willBePhotos",
+                                    "needCatering",
+                                    "willBeConstruction",
+                                    "constructionInHeights",
+                                    "constructionNeedScaffolding",
+                                    "constructionManualMaterialHandling",
+                                    "constructionMechanicalMaterialHandling",
+                                    "needCleaningBefore",
+                                    "needCleaningDuringEvent",
+                                    "needElectricians",
+                                    "needElectricityFromCabinet",
+                                    "fireHazardExpected",
+                                    "expectedDustSmokeVapor",
+                                    "expectedUsageOfChemicals",
+                                    "expectedDecor",
+                                    "organizerFullName",
+                                    "organizerPhone",
+                                    "organizerEmail",
+                                    "organizerAddress",
+                                    "moreOrganizer",
+                                    "customerWithLegalBackgroundName",
+                                    "customerWithLegalBackgroundAddress",
+                                    "customerWithLegalBackgroundTaxNumber",
+                                    "customerWithLegalBackgroundPhone",
+                                    "customerWithLegalBackgroundEmail"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "location": {
+                                        "type": "string"
+                                    },
+                                    "address": {
+                                        "type": "string"
+                                    },
+                                    "startDate": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "endDate": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "qualification": {
+                                        "type": "integer"
+                                    },
+                                    "participants": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    "public": {
+                                        "type": "string"
+                                    },
+                                    "nature": {
+                                        "type": "string"
+                                    },
+                                    "detailedProgramPlan": {
+                                        "type": "string"
+                                    },
+                                    "furnishedMethod": {
+                                        "type": "string"
+                                    },
+                                    "needAccommodation": {
+                                        "type": "boolean"
+                                    },
+                                    "needAccommodationNumber": {
+                                        "description": "Required if needAccommodation is true",
+                                        "type": "integer",
+                                        "minimum": 0
+                                    },
+                                    "needParkingSpace": {
+                                        "type": "boolean"
+                                    },
+                                    "needParkingSpaceNumber": {
+                                        "description": "Required if needParkingSpace is true",
+                                        "type": "integer",
+                                        "minimum": 0
+                                    },
+                                    "producesTrash": {
+                                        "type": "boolean"
+                                    },
+                                    "producesTrashDelivery": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "producesTrashDeliveryWhoDelivers": {
+                                        "type": "string"
+                                    },
+                                    "needWifi": {
+                                        "type": "boolean"
+                                    },
+                                    "needEducationalTechnology": {
+                                        "type": "boolean"
+                                    },
+                                    "needEducationalTechnologyItems": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "participantsWithReducedMobility": {
+                                        "type": "boolean"
+                                    },
+                                    "willBePhotos": {
+                                        "type": "boolean"
+                                    },
+                                    "willBePhotosDevice": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "needCatering": {
+                                        "type": "boolean"
+                                    },
+                                    "needCateringType": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "willBeConstruction": {
+                                        "type": "boolean"
+                                    },
+                                    "constructionStartDate": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "nullable": true
+                                    },
+                                    "constructionEndDate": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "nullable": true
+                                    },
+                                    "constructionSubcontractors": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "constructionInHeights": {
+                                        "type": "boolean"
+                                    },
+                                    "constructionNeedScaffolding": {
+                                        "type": "boolean"
+                                    },
+                                    "constructionManualMaterialHandling": {
+                                        "type": "boolean"
+                                    },
+                                    "constructionMechanicalMaterialHandling": {
+                                        "type": "boolean"
+                                    },
+                                    "constructionMechanicalMaschines": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "constructionMechanicalMaschinesOthers": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "needCleaningBefore": {
+                                        "type": "boolean"
+                                    },
+                                    "needCleaningDuringEvent": {
+                                        "type": "boolean"
+                                    },
+                                    "needElectricians": {
+                                        "type": "string"
+                                    },
+                                    "needElectricityFromCabinet": {
+                                        "type": "boolean"
+                                    },
+                                    "needElectricityFromCabinetNumber": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "fireHazardExpected": {
+                                        "type": "boolean"
+                                    },
+                                    "fireHazardExpectedDescription": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "expectedDustSmokeVapor": {
+                                        "type": "string"
+                                    },
+                                    "expectedUsageOfChemicals": {
+                                        "type": "boolean"
+                                    },
+                                    "expectedUsageOfChemicalsDescription": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "expectedDecor": {
+                                        "type": "boolean"
+                                    },
+                                    "organizerFullName": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "organizerPhone": {
+                                        "type": "string",
+                                        "maxLength": 50
+                                    },
+                                    "organizerEmail": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "organizerAddress": {
+                                        "type": "string"
+                                    },
+                                    "moreOrganizer": {
+                                        "type": "boolean"
+                                    },
+                                    "secondOrganizerFullName": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "maxLength": 255
+                                    },
+                                    "secondOrganizerPhone": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "secondOrganizerEmail": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "nullable": true
+                                    },
+                                    "secondOrganizerAddress": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "customerWithLegalBackgroundName": {
+                                        "type": "string"
+                                    },
+                                    "customerWithLegalBackgroundAddress": {
+                                        "type": "string"
+                                    },
+                                    "customerWithLegalBackgroundTaxNumber": {
+                                        "type": "string"
+                                    },
+                                    "customerWithLegalBackgroundPhone": {
+                                        "type": "string"
+                                    },
+                                    "customerWithLegalBackgroundEmail": {
+                                        "type": "string",
+                                        "format": "email"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Event created successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/api/reject-event": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Reject and soft-delete an event",
+                "description": "Updates the event status to rejected, saves the rejection reason, and then deletes the record.",
+                "operationId": "a9a70939e23e579002f28f1691f8f271",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "id",
+                                    "rejectReason"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "description": "The ID of the event to reject",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "rejectReason": {
+                                        "description": "The reason why the event was rejected",
+                                        "type": "string",
+                                        "example": "Incomplete documentation provided."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Event rejected and deleted successfully"
+                    },
+                    "404": {
+                        "description": "Event not found"
+                    },
+                    "422": {
+                        "description": "Validation error (missing id or reason)"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/api/me": {
+            "get": {
+                "summary": "Get current user profile",
+                "operationId": "aef6fdddec1e8495d4830821b4afdf54",
+                "responses": {
+                    "200": {
+                        "description": "Success"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Events",
+            "description": "Events"
+        }
+    ]
+}

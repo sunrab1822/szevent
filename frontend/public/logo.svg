@@ -1,0 +1,50 @@
+    <svg width="100%" height="100%" viewBox="0 0 128 128" version="1.1" xmlns="http://www.w3.org/2000/svg">
+        <g id="SZE-Logo" transform="matrix(0.149751,0,0,0.276275,-0.934444,-9.17505)">
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,365.587)">
+                <rect x="456.24" y="77.52" width="105.84" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,277.608)">
+                <rect x="456.24" y="130.295" width="105.84" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,189.228)">
+                <rect x="456.24" y="183.311" width="105.84" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,101.249)">
+                <rect x="456.24" y="236.086" width="105.84" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,12.8687)">
+                <rect x="456.24" y="289.102" width="105.84" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,-75.1099)">
+                <rect x="456.24" y="341.877" width="105.84" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,-163.49)">
+                <rect x="456.24" y="394.893" width="105.84" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,-251.869)">
+                <rect x="456.24" y="447.908" width="105.84" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,-340.176)">
+                <rect x="456.24" y="500.88" width="105.84" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,189.146)">
+                <rect x="6.24" y="183.36" width="396.96" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,365.587)">
+                <rect x="6.24" y="77.52" width="396.96" height="26.64" style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(1.53777,0,0,0.833526,-3.35569,277.608)">
+                <rect x="111.12" y="130.295" width="292.08" height="26.64" style="fill: rgb(73,171,198);" />
+            </g>
+            <g transform="matrix(-1.03456,-0.61669,-1.13773,0.560766,1093.95,143.342)">
+                <path
+                    d="M267.406,176.339C148.53,284.435 139.778,468.705 247.874,587.581L267.406,569.82C169.113,461.725 177.072,294.164 285.167,195.871L267.406,176.339Z"
+                    style="fill: currentColor;" />
+            </g>
+            <g transform="matrix(-1.02121,-0.623193,-1.14973,0.55353,1057.88,94.7106)">
+                <path
+                    d="M241.199,240.137C142.858,327.485 133.933,478.242 221.281,576.583L241.199,558.892C163.615,471.544 171.542,337.639 258.89,260.054L241.199,240.137Z"
+                    style="fill: currentColor;" />
+            </g>
+        </g>
+    </svg>
