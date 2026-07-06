@@ -7,21 +7,23 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-laravel}
       MYSQL_USER: ${MYSQL_USER:-laravel}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD} # Élesben ezt a Portainerből add át biztonságosan!
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD} 
     volumes:
       - db_prod_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootsecret"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootsecret" ]
       interval: 5s
       timeout: 5s
       retries: 10
     restart: always
+
   backend:
-    image: ghcr.io/sunrab1822/szevent-backend:v1.0.11
+    image: placeholder_backend
     networks:
       - szevent-internal
     depends_on:
       - db
+      - traefik-public
     environment:
       APP_ENV: production
       DB_HOST: db
@@ -36,9 +38,23 @@ services:
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-rendezveny.szervezes@sze.hu}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-${APP_NAME}}
     restart: always
+    deploy:
+      labels:
+        - traefik.enable=true
+        - traefik.swarm.network=traefik-public
+
+        - traefik.http.routers.szevent_backend.rule=Host(`${BACKEND_PUBLIC_HOST}`)
+        - traefik.http.routers.szevent_backend.entrypoints=websecure
+        - traefik.http.routers.szevent_backend.tls=true
+        - traefik.http.routers.szevent_backend.tls.certresolver=le
+        - traefik.http.routers.szevent_backend.service=szevent_backend
+
+        - traefik.http.services.szevent_backend.loadbalancer.server.port=9000
+        - traefik.http.services.szevent_backend.loadbalancer.passhostheader=true
+
   scheduler:
-    image: ghcr.io/sunrab1822/szevent-backend:v1.0.11 # Ugyanaz a kép, mint a backend
-    command: ["scheduler"]
+    image: placeholder_backend # Ugyanaz a kép, mint a backend
+    command: [ "scheduler" ]
     networks:
       - szevent-internal
     depends_on:
@@ -51,13 +67,14 @@ services:
       DB_USERNAME: ${MYSQL_USER:-laravel}
       DB_PASSWORD: ${MYSQL_PASSWORD}
     restart: unless-stopped
+
   frontend:
-    image: ghcr.io/sunrab1822/szevent-frontend:v1.0.11
+    image: placeholder_frontend
     depends_on:
       - backend
     restart: always
     environment:
-      VITE_API_ORIGIN: http://backend:9000
+      VITE_API_ORIGIN: https://${BACKEND_PUBLIC_HOST}
       VITE_AUTH_TOKEN: ${VITE_AUTH_TOKEN}
     networks:
       - traefik-public
@@ -66,13 +83,17 @@ services:
       labels:
         - traefik.enable=true
         - traefik.swarm.network=traefik-public
+
         - traefik.http.routers.szevent.rule=Host(`${PUBLIC_HOST}`)
         - traefik.http.routers.szevent.entrypoints=websecure
         - traefik.http.routers.szevent.tls=true
         - traefik.http.routers.szevent.tls.certresolver=le
         - traefik.http.routers.szevent.service=szevent
+
         - traefik.http.services.szevent.loadbalancer.server.port=80
         - traefik.http.services.szevent.loadbalancer.passhostheader=true
+
+
 volumes:
   db_prod_data:
     driver: local
@@ -80,9 +101,12 @@ volumes:
       type: nfs
       o: addr=${NFS_ADDR},rw,nfsvers=4
       device: :${NFS_BASE_PATH}/szevent/db_data
+
+
 networks:
   traefik-public:
     external: true
+
   szevent-internal:
     driver: overlay
     internal: true
