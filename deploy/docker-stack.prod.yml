@@ -11,14 +11,13 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootsecret" ]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootsecret"]
       interval: 5s
       timeout: 5s
       retries: 10
     restart: always
-
   backend:
-    image: placeholder_backend
+    image: ghcr.io/sunrab1822/szevent-backend:v1.0.5
     depends_on:
       db:
         condition: service_healthy
@@ -29,10 +28,9 @@ services:
       DB_USERNAME: laravel
       DB_PASSWORD: secret
     restart: always
-
   scheduler:
-    image: placeholder_backend # Ugyanaz a kép, mint a backend
-    command: [ "scheduler" ]
+    image: ghcr.io/sunrab1822/szevent-backend:v1.0.5 # Ugyanaz a kép, mint a backend
+    command: ["scheduler"]
     depends_on:
       db:
         condition: service_healthy
@@ -45,14 +43,12 @@ services:
       DB_USERNAME: laravel
       DB_PASSWORD: secret
     restart: unless-stopped
-
   frontend:
-    image: placeholder_frontend
+    image: ghcr.io/sunrab1822/szevent-frontend:v1.0.5
     ports:
       - "80:80"
     depends_on:
       - backend
     restart: always
-
 volumes:
   db_prod_data:
