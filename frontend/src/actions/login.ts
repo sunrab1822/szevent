@@ -1,5 +1,5 @@
 export const login = async (): Promise<boolean> => {
-    location.replace("http://localhost/api/saml/login");
+    location.replace("/api/saml/login");
 
     return true;
 };

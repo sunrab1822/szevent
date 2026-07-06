@@ -22,7 +22,6 @@ services:
       - szevent-internal
     depends_on:
       - db
-      - traefik-public
     environment:
       APP_ENV: production
       DB_HOST: db
