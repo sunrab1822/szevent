@@ -10,6 +10,10 @@ run_command() {
     fi
 }
 
+if [ ! -f /var/www/.env ] && [ -f /var/www/.env.example ]; then
+    cp /var/www/.env.example /var/www/.env
+fi
+
 run_command "php artisan key:generate --no-interaction"
 run_command "php artisan storage:link --no-interaction"
 run_command "php artisan migrate --force"
