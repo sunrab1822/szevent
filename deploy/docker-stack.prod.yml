@@ -19,7 +19,7 @@ services:
       retries: 10
     restart: always
   backend:
-    image: ghcr.io/sunrab1822/szevent-backend:v1.0.8
+    image: ghcr.io/sunrab1822/szevent-backend:v1.0.9
     networks:
       - szevent-internal
     depends_on:
@@ -39,7 +39,7 @@ services:
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-${APP_NAME}}
     restart: always
   scheduler:
-    image: ghcr.io/sunrab1822/szevent-backend:v1.0.8 # Ugyanaz a kép, mint a backend
+    image: ghcr.io/sunrab1822/szevent-backend:v1.0.9 # Ugyanaz a kép, mint a backend
     command: ["scheduler"]
     networks:
       - szevent-internal
@@ -54,7 +54,7 @@ services:
       DB_PASSWORD: ${MYSQL_PASSWORD}
     restart: unless-stopped
   frontend:
-    image: ghcr.io/sunrab1822/szevent-frontend:v1.0.8
+    image: ghcr.io/sunrab1822/szevent-frontend:v1.0.9
     depends_on:
       - backend
     restart: always
