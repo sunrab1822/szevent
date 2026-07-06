@@ -32,9 +32,12 @@ RUN composer install \
     --no-dev \
     --prefer-dist \
     --no-interaction \
-    --optimize-autoloader
+    --optimize-autoloader \
+    --no-scripts
 
 COPY . .
+
+RUN php artisan package:discover --ansi
 
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
     && chmod +x ./scripts/docker_entry.sh
