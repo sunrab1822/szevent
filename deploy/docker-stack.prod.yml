@@ -25,6 +25,8 @@ services:
       - db
     environment:
       APP_ENV: production
+      APP_KEY: ${APP_KEY}
+      APP_URL: ${APP_URL}
       DB_HOST: db
       DB_DATABASE: ${MYSQL_DATABASE:-laravel}
       DB_USERNAME: ${MYSQL_USER:-laravel}
@@ -36,6 +38,13 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-rendezveny.szervezes@sze.hu}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-${APP_NAME}}
+      SAML_SP_ENTITYID: ${SAML_SP_ENTITYID}
+      SAML_IDP_ENTITYID: ${SAML_IDP_ENTITYID}
+      SAML_IDP_SSO: ${SAML_IDP_SSO}
+      SAML_IDP_SLO: ${SAML_IDP_SLO}
+      SAML_IDP_CERT: ${SAML_IDP_CERT}
+      SAML_SP_CERT: ${SAML_SP_CERT}
+      SAML_SP_PK: ${SAML_SP_PK}
     restart: always
 
   scheduler:
