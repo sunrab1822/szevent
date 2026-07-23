@@ -78,7 +78,7 @@ class UserController extends Controller
 
         $path = $file->storeAs('profilpicks', $filename, 'public');
 
-        $user->picture = env('APP_URL') . '/'.'api/' .  Storage::url($path);
+        $user->picture = env('APP_URL') .  Storage::url($path);
         $user->save();
 
         return response()->json($user);
