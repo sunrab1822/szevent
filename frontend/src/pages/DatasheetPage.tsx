@@ -1,4 +1,4 @@
-import { ChevronDown, DollarSign, Eye, FileText, Pencil, Save, Search, UserRoundMinus, UserRoundPlus, X } from "lucide-react";
+import { ChevronDown, DollarSign, Eye, FileText, Pencil, Save, Search, UserRoundMinus, UserRoundPlus, X, Check } from "lucide-react";
 import { useState } from "react";
 import { Modal } from "antd";
 import { useDispatch } from "react-redux";
@@ -362,6 +362,14 @@ const DatasheetPage = () => {
                             onClick={() => setContractDocumentsModalOpen(true)}
                         >
                             <FileText /> Szerződések kiválasztása
+                        </button>
+                    )}
+                    {!isEditing && selectedEvent.status === "Beérkezett" &&(
+                        <button
+                            className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
+                            onClick={handleNextStatus}
+                        >
+                            <Check /> Elfogadás
                         </button>
                     )}
                     {!isEditing && legalStatusAction && (
