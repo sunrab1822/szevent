@@ -5,6 +5,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+ENV VITE_AUTH_TOKEN=SZERendezvenySzervezo
 RUN npm run build --skip-nx-cache || npx vite build
 
 # Stage 2 — Serve via Nginx
