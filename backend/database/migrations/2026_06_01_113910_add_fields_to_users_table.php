@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('picture')->default(env('APP_URL') . Storage::url('profilpicks/default.png'));
+            $table->string('picture')->default(env('APP_URL'). '/' . 'api/' . Storage::url('profilpicks/default.png'));
         });
     }
 
