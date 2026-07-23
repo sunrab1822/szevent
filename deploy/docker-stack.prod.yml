@@ -7,7 +7,7 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-laravel}
       MYSQL_USER: ${MYSQL_USER:-laravel}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD} # Élesben ezt a Portainerből add át biztonságosan!
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD} 
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - db_prod_data:/var/lib/mysql
     healthcheck:
@@ -45,6 +45,8 @@ services:
       SAML_IDP_CERT: ${SAML_IDP_CERT}
       SAML_SP_CERT: ${SAML_SP_CERT}
       SAML_SP_PK: ${SAML_SP_PK}
+    volumes:
+      - storage_prod_data:/var/www/storage/app/public
     restart: always
 
   scheduler:
@@ -61,6 +63,8 @@ services:
       DB_DATABASE: ${MYSQL_DATABASE:-laravel}
       DB_USERNAME: ${MYSQL_USER:-laravel}
       DB_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - storage_prod_data:/var/www/storage/app/public
     restart: unless-stopped
 
   frontend:
@@ -68,6 +72,8 @@ services:
     depends_on:
       - backend
     restart: always
+    volumes:
+      - storage_prod_data:/var/www/storage/app/public:ro
     environment:
       VITE_API_ORIGIN: http://backend:9000
       VITE_AUTH_TOKEN: ${VITE_AUTH_TOKEN}
@@ -96,6 +102,12 @@ volumes:
       type: nfs
       o: addr=${NFS_ADDR},rw,nfsvers=4
       device: :${NFS_BASE_PATH}/szevent/db_data
+  storage_prod_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NFS_ADDR},rw,nfsvers=4
+      device: :${NFS_BASE_PATH}/szevent/storage_data
 
 
 networks:
