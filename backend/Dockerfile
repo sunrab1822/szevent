@@ -37,7 +37,8 @@ RUN composer install \
 
 COPY . .
 
-RUN php artisan package:discover --ansi
+# RUN php artisan package:discover --ansi
+
 
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
     && chmod +x ./scripts/docker_entry.sh
