@@ -23,7 +23,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend/.env:/var/www/.env
-      - storage_data:/var/www/storage/app/public    
+      - storage_prod_data:/var/www/storage/app/public
     environment:
       APP_ENV: local
       DB_HOST: db
@@ -41,6 +41,7 @@ services:
         condition: service_started
     volumes:
       - ./backend/.env:/var/www/.env
+      - storage_prod_data:/var/www/storage/app/public
     environment:
       APP_ENV: local
       DB_HOST: db
@@ -56,8 +57,8 @@ services:
     depends_on:
       - backend
     volumes:
-      - storage_data:/var/www/storage/app/public:ro
+      - storage_prod_data:/var/www/storage/app/public:ro
 
 volumes:
   db_data:
-  storage_data:
+  storage_prod_data:
