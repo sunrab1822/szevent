@@ -23,6 +23,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend/.env:/var/www/.env
+      - storage_data:/var/www/storage/app/public    
     environment:
       APP_ENV: local
       DB_HOST: db
@@ -54,6 +55,9 @@ services:
       - "80:80"
     depends_on:
       - backend
+    volumes:
+      - storage_data:/var/www/storage/app/public:ro
 
 volumes:
   db_data:
+  storage_data:
