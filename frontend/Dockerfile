@@ -6,6 +6,7 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 ENV VITE_AUTH_TOKEN=SZERendezvenySzervezo
+ENV VITE_API_ORIGIN=""
 RUN npm run build --skip-nx-cache || npx vite build
 
 # Stage 2 — Serve via Nginx
