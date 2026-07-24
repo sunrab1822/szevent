@@ -16,17 +16,8 @@ if [ ! -f /var/www/vendor/autoload.php ]; then
     run_command "composer install --optimize-autoloader --no-dev"
 fi
 
-run_command "php artisan package:discover --ansi"
-
-# # Only generate a key if one isn't already set — generating on every
-# # boot would invalidate existing sessions and encrypted data.
-# if [ -z "$APP_KEY" ]; then
-#     echo "APP_KEY not set, generating one..."
-# else
-#     echo "APP_KEY already set, skipping key:generate"
-# fi
+php "artisan package:discover --ansi"
 run_command "php artisan key:generate --no-interaction"
-
 run_command "php artisan storage:link --no-interaction"
 run_command "php artisan migrate --force"
 run_command "php artisan config:cache"
