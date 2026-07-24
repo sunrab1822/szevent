@@ -4,7 +4,7 @@ run_command() {
     command="$1"
     echo "Running: $command"
     eval "$command"
-if [ $? -ne 0 ]; then
+    if [ $? -ne 0 ]; then
         echo "Error executing command: $command"
         exit 1
     fi
