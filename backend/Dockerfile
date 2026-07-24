@@ -21,11 +21,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Install Composer binary
+# Add Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
+# Copy only composer files first so this layer is cached
+# and doesn't rerun on every code change
 COPY composer.json composer.lock ./
 
 RUN composer install \
@@ -38,7 +40,6 @@ RUN composer install \
 COPY . .
 
 # RUN php artisan package:discover --ansi
-
 
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
     && chmod +x ./scripts/docker_entry.sh
