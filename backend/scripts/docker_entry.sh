@@ -10,10 +10,8 @@ run_command() {
     fi
 }
 
-# Install vendor if missing (happens when volume mount overwrites build)
-if [ ! -f /var/www/vendor/autoload.php ]; then
-    echo "vendor/ not found, running composer install..."
-    run_command "composer install --optimize-autoloader --no-dev"
+if [ ! -f /var/www/.env ] && [ -f /var/www/.env.example ]; then
+    cp /var/www/.env.example /var/www/.env
 fi
 
 php "artisan package:discover --ansi"
