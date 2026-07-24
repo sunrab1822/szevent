@@ -21,14 +21,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Install Composer binary
+# Add Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
-
-COPY composer.json composer.lock ./
-
-RUN composer install \
     --no-dev \
     --prefer-dist \
     --no-interaction \
