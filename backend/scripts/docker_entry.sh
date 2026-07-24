@@ -10,11 +10,12 @@ run_command() {
     fi
 }
 
-if [ ! -f /var/www/.env ] && [ -f /var/www/.env.example ]; then
-    cp /var/www/.env.example /var/www/.env
+# Install vendor if missing (happens when volume mount overwrites build)
+if [ ! -f /var/www/vendor/autoload.php ]; then
+    echo "vendor/ not found, running composer install..."
+    run_command "composer install --optimize-autoloader --no-dev"
 fi
 
-php "artisan package:discover --ansi"
 run_command "php artisan key:generate --no-interaction"
 run_command "php artisan storage:link --no-interaction"
 run_command "php artisan migrate --force"
