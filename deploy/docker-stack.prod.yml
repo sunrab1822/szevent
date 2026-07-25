@@ -102,7 +102,7 @@ volumes:
       type: nfs
       o: addr=${NFS_ADDR},rw,nfsvers=4
       device: :${NFS_BASE_PATH}/szevent/db_data
-  storage_prod_data:                                       # ADD THIS BLOCK
+  storage_prod_data:
     driver: local
     driver_opts:
       type: nfs
