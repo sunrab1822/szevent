@@ -22,8 +22,8 @@ services:
       - szevent-internal
     depends_on:
       - db
-    volumes:
-      - storage_prod_data:/var/www/storage
+    # volumes:
+      # - storage_prod_data:/var/www/storage
     environment:
       APP_ENV: production
       APP_KEY: ${APP_KEY}
@@ -55,8 +55,8 @@ services:
     depends_on:
       - db
       - backend
-    volumes:
-      - storage_prod_data:/var/www/storage
+    # volumes:
+    #   - storage_prod_data:/var/www/storage
     environment:
       APP_ENV: production
       DB_HOST: db
@@ -75,8 +75,8 @@ services:
     networks:
       - traefik-public
       - szevent-internal
-    volumes:
-      - storage_prod_data:/var/www/storage:ro
+    # volumes:
+      # - storage_prod_data:/var/www/storage:ro
     deploy:
       labels:
         - traefik.enable=true
