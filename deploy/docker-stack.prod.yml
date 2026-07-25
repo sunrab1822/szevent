@@ -24,7 +24,7 @@ services:
     depends_on:
       - db
     volumes:
-      - storage_prod_data:/var/www/storage/app/public
+      - storage_prod_data:/var/www/storage
     environment:
       APP_ENV: production
       APP_KEY: ${APP_KEY}
@@ -58,7 +58,7 @@ services:
       - db
       - backend
     volumes:
-      - storage_prod_data:/var/www/storage/app/public
+      - storage_prod_data:/var/www/storage
     environment:
       APP_ENV: production
       DB_HOST: db
@@ -79,7 +79,7 @@ services:
       - traefik-public
       - szevent-internal
     volumes:
-      - storage_prod_data:/var/www/storage/app/public:ro
+      - storage_prod_data:/var/www/storage:ro
     deploy:
       labels:
         - traefik.enable=true
@@ -102,12 +102,12 @@ volumes:
       type: nfs
       o: addr=${NFS_ADDR},rw,nfsvers=4
       device: :${NFS_BASE_PATH}/szevent/db_data
-  storage_prod_data:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: addr=${NFS_ADDR},rw,nfsvers=4
-      device: :${NFS_BASE_PATH}/szevent/storage_data
+  # storage_prod_data:
+  #   driver: local
+  #   driver_opts:
+  #     type: nfs
+  #     o: addr=${NFS_ADDR},rw,nfsvers=4
+  #     device: :${NFS_BASE_PATH}/szevent/storage_data
 
 
 networks:
