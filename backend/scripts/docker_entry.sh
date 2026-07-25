@@ -14,7 +14,19 @@ if [ ! -f /var/www/.env ] && [ -f /var/www/.env.example ]; then
     cp /var/www/.env.example /var/www/.env
 fi
 
-php "artisan package:discover --ansi"
+run_command "php artisan package:discover --ansi"
+
+# APP_KEY should be set as a permanent environment variable
+# (Portainer stack env, GitHub secrets, etc). Only generate one
+# here if it's genuinely missing — regenerating on every boot
+# would invalidate all existing sessions and encrypted data.
+if [ -z "$APP_KEY" ]; then
+    echo "APP_KEY not set, generating one..."
+    run_command "php artisan key:generate --no-interaction"
+else
+    echo "APP_KEY already set, skipping key:generate"
+fi
+
 run_command "php artisan key:generate --no-interaction"
 run_command "php artisan storage:link --no-interaction"
 run_command "php artisan migrate --force"
