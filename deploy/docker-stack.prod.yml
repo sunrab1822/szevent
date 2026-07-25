@@ -7,17 +7,18 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-laravel}
       MYSQL_USER: ${MYSQL_USER:-laravel}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD} # Élesben ezt a Portainerből add át biztonságosan!
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD} 
     volumes:
       - db_prod_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootsecret"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootsecret" ]
       interval: 5s
       timeout: 5s
       retries: 10
     restart: always
+
   backend:
-    image: ghcr.io/sunrab1822/szevent-backend:v1.0.49
+    image: placeholder_backend
     networks:
       - szevent-internal
     depends_on:
@@ -47,9 +48,10 @@ services:
       SAML_SP_CERT: ${SAML_SP_CERT}
       SAML_SP_PK: ${SAML_SP_PK}
     restart: always
+
   scheduler:
-    image: ghcr.io/sunrab1822/szevent-backend:v1.0.49 # Ugyanaz a kép, mint a backend
-    command: ["scheduler"]
+    image: placeholder_backend # Ugyanaz a kép, mint a backend
+    command: [ "scheduler" ]
     networks:
       - szevent-internal
     depends_on:
@@ -64,8 +66,9 @@ services:
       DB_USERNAME: ${MYSQL_USER:-laravel}
       DB_PASSWORD: ${MYSQL_PASSWORD}
     restart: unless-stopped
+
   frontend:
-    image: ghcr.io/sunrab1822/szevent-frontend:v1.0.49
+    image: placeholder_frontend
     depends_on:
       - backend
     restart: always
@@ -81,13 +84,17 @@ services:
       labels:
         - traefik.enable=true
         - traefik.swarm.network=traefik-public
+
         - traefik.http.routers.szevent.rule=Host(`${PUBLIC_HOST}`)
         - traefik.http.routers.szevent.entrypoints=websecure
         - traefik.http.routers.szevent.tls=true
         - traefik.http.routers.szevent.tls.certresolver=le
         - traefik.http.routers.szevent.service=szevent
+
         - traefik.http.services.szevent.loadbalancer.server.port=80
         - traefik.http.services.szevent.loadbalancer.passhostheader=true
+
+
 volumes:
   db_prod_data:
     driver: local
@@ -95,15 +102,18 @@ volumes:
       type: nfs
       o: addr=${NFS_ADDR},rw,nfsvers=4
       device: :${NFS_BASE_PATH}/szevent/db_data
-  storage_prod_data: # ADD THIS BLOCK
+  storage_prod_data:
     driver: local
     driver_opts:
       type: nfs
       o: addr=${NFS_ADDR},rw,nfsvers=4
       device: :${NFS_BASE_PATH}/szevent/storage_data
+
+
 networks:
   traefik-public:
     external: true
+
   szevent-internal:
     driver: overlay
     internal: true
