@@ -17,13 +17,13 @@ services:
       retries: 10
     restart: always
   backend:
-    image: ghcr.io/sunrab1822/szevent-backend:v1.0.53
+    image: ghcr.io/sunrab1822/szevent-backend:v1.0.54
     networks:
       - szevent-internal
     depends_on:
       - db
     # volumes:
-      # - storage_prod_data:/var/www/storage
+    # - storage_prod_data:/var/www/storage
     environment:
       APP_ENV: production
       APP_KEY: ${APP_KEY}
@@ -48,7 +48,7 @@ services:
       SAML_SP_PK: ${SAML_SP_PK}
     restart: always
   scheduler:
-    image: ghcr.io/sunrab1822/szevent-backend:v1.0.53 # Ugyanaz a kép, mint a backend
+    image: ghcr.io/sunrab1822/szevent-backend:v1.0.54 # Ugyanaz a kép, mint a backend
     command: ["scheduler"]
     networks:
       - szevent-internal
@@ -65,7 +65,7 @@ services:
       DB_PASSWORD: ${MYSQL_PASSWORD}
     restart: unless-stopped
   frontend:
-    image: ghcr.io/sunrab1822/szevent-frontend:v1.0.53
+    image: ghcr.io/sunrab1822/szevent-frontend:v1.0.54
     depends_on:
       - backend
     restart: always
@@ -76,7 +76,7 @@ services:
       - traefik-public
       - szevent-internal
     # volumes:
-      # - storage_prod_data:/var/www/storage:ro
+    # - storage_prod_data:/var/www/storage:ro
     deploy:
       labels:
         - traefik.enable=true
@@ -95,12 +95,12 @@ volumes:
       type: nfs
       o: addr=${NFS_ADDR},rw,nfsvers=4
       device: :${NFS_BASE_PATH}/szevent/db_data
-  # storage_prod_data:
-  #   driver: local
-  #   driver_opts:
-  #     type: nfs
-  #     o: addr=${NFS_ADDR},rw,nfsvers=4
-  #     device: :${NFS_BASE_PATH}/szevent/storage_data
+      # storage_prod_data:
+      #   driver: local
+      #   driver_opts:
+      #     type: nfs
+      #     o: addr=${NFS_ADDR},rw,nfsvers=4
+      #     device: :${NFS_BASE_PATH}/szevent/storage_data
 networks:
   traefik-public:
     external: true
