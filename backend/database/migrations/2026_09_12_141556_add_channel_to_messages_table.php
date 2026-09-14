@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 
 return new class extends Migration
 {
@@ -12,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('picture')->default(env('APP_URL') . Storage::url('profilpicks/default.png'));
+        Schema::table('messages', function (Blueprint $table) {
+            $table->string('channel')->default('rendezvenyes')->after('events_id');
+            $table->index(['events_id', 'channel']);
         });
     }
 
@@ -22,8 +22,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('picture');
+        Schema::table('messages', function (Blueprint $table) {
+            $table->dropIndex(['events_id', 'channel']);
+            $table->dropColumn('channel');
         });
     }
 };
