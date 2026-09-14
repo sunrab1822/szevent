@@ -6,7 +6,7 @@ return [
 
 
     'sp' => [
-        'entityId' => env('APP_URL') . '/api/saml/metadata',
+        'entityId' => env('SAML_SP_ENTITYID'),
         'NameIDFormat' => "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
         'assertionConsumerService' => [
             'url' => env('APP_URL') . '/api/saml/acs',
@@ -16,8 +16,8 @@ return [
             'url' => env('APP_URL') . '/api/saml/sls',
             'binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
         ],
-        'x509cert' => '',  // Optional SP cert
-        'privateKey' => '', // Optional SP private key
+        'x509cert' => env("SAML_SP_CERT"),  // Optional SP cert
+        'privateKey' => env("SAML_SP_PK"), // Optional SP private key
     ],
 
     'idp' => [
