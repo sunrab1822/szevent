@@ -440,7 +440,7 @@ const DatasheetPage = () => {
 
             <div className="flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <h1 className="w-full break-words text-2xl font-bold" dangerouslySetInnerHTML={{ __html: selectedEvent.name }}></h1>
+                    <h1 className="w-full break-words text-2xl font-bold">{selectedEvent.name}</h1>
                     <p className="text-sm">Esemény státusza</p>
                 </div>
                 <div className="flex w-full shrink-0 flex-row items-center justify-end gap-2 self-stretch max-sm:flex-col max-sm:items-stretch md:w-auto md:self-auto">
@@ -547,10 +547,7 @@ const DatasheetPage = () => {
                                 <div className="group flex cursor-pointer flex-row justify-between" onClick={() => toggleSection(index)}>
                                     <div className="flex flex-row items-center gap-2">
                                         <div className="bg-primary-light h-full w-1.5 rounded-full" />
-                                        <h2
-                                            className="group-hover:text-dark/80 text-xl font-semibold transition-colors"
-                                            dangerouslySetInnerHTML={{ __html: section.title }}
-                                        />
+                                        <h2 className="group-hover:text-dark/80 text-xl font-semibold transition-colors">{section.title}</h2>
                                     </div>
                                     <ChevronDown
                                         className={`transition-transform duration-500 ${isOpen ? "rotate-180" : ""}`}

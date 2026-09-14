@@ -274,10 +274,7 @@ const DashboardPage = () => {
                                         title={event.name}
                                     >
                                         {event.unSeen && <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />}
-                                        <span
-                                            className="line-clamp-1 pr-3 text-xs leading-snug font-bold text-[#3e484c]"
-                                            dangerouslySetInnerHTML={{ __html: event.name }}
-                                        />
+                                        <span className="line-clamp-1 pr-3 text-xs leading-snug font-bold text-[#3e484c]">{event.name}</span>
                                         <span className="truncate text-[11px] leading-none font-medium text-[#3e484c]/65">
                                             {event.status}
                                         </span>

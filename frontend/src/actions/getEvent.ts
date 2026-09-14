@@ -14,11 +14,12 @@ export const getEvent = async (id: number): Promise<boolean> => {
     });
 
     if (!response.ok) {
+        store.dispatch(SetSelectedEvent({ selectedEvent: null }));
         return false;
     }
 
     const body = await response.json();
-    store.dispatch(SetSelectedEvent({ selectedEvent: body.event[0] }));
+    store.dispatch(SetSelectedEvent({ selectedEvent: body.event?.[0] ?? null }));
 
     return true;
 };

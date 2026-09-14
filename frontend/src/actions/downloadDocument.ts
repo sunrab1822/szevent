@@ -5,6 +5,10 @@ export const downloadDocument = async (id: number, name: string): Promise<void> 
         },
     });
 
+    if (!response.ok) {
+        return;
+    }
+
     const blob = await response.blob();
     const objectUrl = URL.createObjectURL(blob);
 
