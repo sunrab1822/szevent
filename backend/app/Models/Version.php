@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Version extends Model
 {
-    protected $fillable = ['events_id', 'offer_type', 'reason', 'version'];
+    protected $fillable = ['events_id', 'offer_type', 'reason', 'version', 'comment'];
 
     /**
      * Get all of the  uniOffers for the Version

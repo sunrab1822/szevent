@@ -18,6 +18,7 @@ export interface OfferVersion {
     id: number;
     version: number;
     reason: string | null;
+    comment: string | null;
     offer_type: OfferType;
     created_at?: string;
     updated_at?: string;

@@ -1,4 +1,4 @@
-export const uniNewOffer = async (id: number, data: any): Promise<boolean> => {
+export const uniNewOffer = async (id: number, data: unknown[], comment?: string): Promise<boolean> => {
     try {
         const response = await fetch(`${import.meta.env.VITE_API_ORIGIN}/api/uni/new-offer`, {
             headers: {
@@ -8,6 +8,7 @@ export const uniNewOffer = async (id: number, data: any): Promise<boolean> => {
             body: JSON.stringify({
                 id,
                 offers: data,
+                ...(comment ? { comment } : {}),
             }),
             method: "POST",
         });

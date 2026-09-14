@@ -32,6 +32,16 @@ const SideBar = ({ sidebarOpen }: SideBarProps) => {
                 icon: <CalendarIcon />,
             },
             {
+                name: "Famulus események",
+                path: "/famulus/events",
+                icon: <CalendarIcon />,
+            },
+            {
+                name: "Jogi események",
+                path: "/legal/events",
+                icon: <CalendarIcon />,
+            },
+            {
                 name: "Famulus Árlista",
                 path: "/famulus-prices",
                 icon: <DollarSign />,
@@ -120,9 +130,9 @@ const SideBar = ({ sidebarOpen }: SideBarProps) => {
 
     return (
         <aside
-            className={`sidebar:relative sidebar:z-auto absolute z-50 h-full overflow-hidden transition-all duration-500 ${sidebarOpen ? "w-[220px]" : "w-0"}`}
+            className={`sidebar:relative sidebar:z-auto absolute z-50 h-full overflow-hidden transition-all duration-500 ${sidebarOpen ? "w-[240px]" : "w-0"}`}
         >
-            <div className="bg-white-bg flex h-full w-[220px] flex-col items-start gap-4 pt-4 pl-4">
+            <div className="bg-white-bg flex h-full w-[240px] flex-col items-start gap-4 pt-4 pl-4">
                 {sideBarItems.map((item, index) => (
                     <Link
                         to={item.path}

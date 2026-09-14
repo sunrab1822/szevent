@@ -5,9 +5,10 @@ interface EventsListColumnProps {
     name: string;
     color: string;
     events: Event[];
+    datasheetPathPrefix?: string;
 }
 
-const EventsListColumn = ({ name, color, events }: EventsListColumnProps) => {
+const EventsListColumn = ({ name, color, events, datasheetPathPrefix = "" }: EventsListColumnProps) => {
     return (
         <div className="flex w-full flex-col gap-4 self-start">
             <div className="bg-white-bg sticky top-0 flex flex-row items-center justify-between py-2">
@@ -24,12 +25,12 @@ const EventsListColumn = ({ name, color, events }: EventsListColumnProps) => {
             {events?.map((event) => (
                 <Link
                     key={event.id}
-                    to={`/datasheet/${event.id}`}
+                    to={`${datasheetPathPrefix}/datasheet/${event.id}`}
                     className="border-primary-light relative flex w-full flex-col gap-4 rounded-lg bg-white p-4 transition-all hover:border-l-4"
                 >
                     {event.unSeen && <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-red-500" />}
-                    <h3 className="w-[90%] truncate font-bold" dangerouslySetInnerHTML={{ __html: event.name }} />
-                    <p className="font-light break-words" dangerouslySetInnerHTML={{ __html: event.status }} />
+                    <h3 className="w-[90%] truncate font-bold">{event.name}</h3>
+                    <p className="font-light break-words">{event.status}</p>
                     {event.assigned_user && event.assigned_user.length > 0 && (
                         <div className="flex flex-row items-center gap-2 text-sm">
                             <img
@@ -38,7 +39,7 @@ const EventsListColumn = ({ name, color, events }: EventsListColumnProps) => {
                                 className="h-7 w-7 flex-shrink-0 rounded-full object-cover"
                             />
 
-                            <p dangerouslySetInnerHTML={{ __html: event.assigned_user[0]?.name }} />
+                            <p>{event.assigned_user[0]?.name}</p>
                         </div>
                     )}
                 </Link>

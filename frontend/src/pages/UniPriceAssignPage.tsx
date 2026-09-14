@@ -47,6 +47,7 @@ const UniPriceAssignPage = () => {
     const [activeTab, setActiveTab] = useState<"room" | "service">("room");
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState<SelectedCombinedItem[]>([]);
+    const [comment, setComment] = useState("");
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -111,9 +112,12 @@ const UniPriceAssignPage = () => {
 
     const handleNewOffer = async () => {
         if (!id) return;
+        const trimmedComment = comment.trim();
+        if (selected.length === 0 && trimmedComment.length === 0) return;
+
         setSaving(true);
         try {
-            const success = await uniNewOffer(Number(id), selected);
+            const success = await uniNewOffer(Number(id), selected, trimmedComment);
             if (!success) {
                 showActionError();
                 return;
@@ -128,6 +132,9 @@ const UniPriceAssignPage = () => {
     };
 
     const grandTotal = selected.reduce((sum, item) => sum + lineTotal(item), 0);
+    const trimmedComment = comment.trim();
+    const isEmptyOffer = selected.length === 0;
+    const canSave = !isEmptyOffer || trimmedComment.length > 0;
 
     const columns = useMemo<ColumnsType<SelectedCombinedItem>>(
         () => [
@@ -242,8 +249,15 @@ const UniPriceAssignPage = () => {
                     <>
                         <p className="font-medium">Biztosan menteni szeretné az árajánlatot?</p>
                         <p className="mt-1 text-[#3e484c]/70">
-                            A kiválasztott tételek összesen <span className="text-primary-light font-semibold">{formatFt(grandTotal)}</span>{" "}
-                            értékben kerülnek elmentésre.
+                            {isEmptyOffer ? (
+                                <>Az ajánlat tétel nélkül, a megadott megjegyzéssel kerül elmentésre.</>
+                            ) : (
+                                <>
+                                    A kiválasztott tételek összesen{" "}
+                                    <span className="text-primary-light font-semibold">{formatFt(grandTotal)}</span> értékben kerülnek
+                                    elmentésre.
+                                </>
+                            )}
                         </p>
                     </>
                 }
@@ -251,7 +265,7 @@ const UniPriceAssignPage = () => {
                 onCancel={() => setConfirmOpen(false)}
                 onConfirm={handleNewOffer}
                 confirmLoading={saving}
-                confirmDisabled={selected.length === 0}
+                confirmDisabled={!canSave}
             />
             <div className="text-[#3e484c]">
                 <h1 className="text-2xl font-bold">Terem és szolgáltatás árak hozzárendelése</h1>
@@ -442,30 +456,40 @@ const UniPriceAssignPage = () => {
                         />
                     </div>
 
-                    {/* {selected.length > 0 && (
-                        <div className="rounded-md border border-[#3e484c]/10 bg-white p-4 shadow-sm">
+                    <div className="rounded-md border border-[#3e484c]/10 bg-white p-4 shadow-sm">
+                        <div className="mb-1.5 flex items-center justify-between gap-3">
                             <label className="mb-1.5 block text-[10px] font-semibold tracking-wide text-[#3e484c]/50 uppercase">
-                                Megjegyzés
+                                Megjegyzés {isEmptyOffer && <span className="text-red-500">*</span>}
                             </label>
-                            <textarea
-                                rows={3}
-                                placeholder="A kiválasztott tételek az alábbi ajánlathoz kerülnek hozzárendelésre..."
-                                className="focus:ring-primary-light/40 w-full resize-none rounded-md border border-[#3e484c]/10 bg-gray-50/60 px-3 py-2 text-sm text-[#3e484c] placeholder:text-[#3e484c]/30 focus:ring-2 focus:outline-none"
-                            />
+                            {isEmptyOffer && <span className="text-[11px] text-red-500">Tétel nélküli ajánlatnál kötelező</span>}
                         </div>
-                    )} */}
+                        <textarea
+                            rows={3}
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            placeholder={
+                                isEmptyOffer
+                                    ? "Írja le, miért kerül tétel nélkül mentésre az ajánlat..."
+                                    : "A kiválasztott tételek az alábbi megjegyzéssel kerülnek hozzárendelésre..."
+                            }
+                            className="focus:ring-primary-light/40 w-full resize-none rounded-md border border-[#3e484c]/10 bg-gray-50/60 px-3 py-2 text-sm text-[#3e484c] placeholder:text-[#3e484c]/30 focus:ring-2 focus:outline-none"
+                        />
+                    </div>
                 </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 border-t border-[#3e484c]/10 pt-5">
-                <button className="cursor-pointer rounded-md border border-[#3e484c]/15 px-5 py-2 text-sm text-[#3e484c] transition-colors hover:bg-gray-50">
+                <button
+                    onClick={() => (id ? navigate(`/datasheet/${id}`) : navigate(-1))}
+                    className="cursor-pointer rounded-md border border-[#3e484c]/15 px-5 py-2 text-sm text-[#3e484c] transition-colors hover:bg-gray-50"
+                >
                     Mégse
                 </button>
                 <button
-                    disabled={selected.length === 0}
-                    onClick={handleNewOffer}
+                    disabled={!canSave}
+                    onClick={() => setConfirmOpen(true)}
                     className={`flex items-center gap-2 rounded-md px-5 py-2 text-sm font-semibold text-white transition-colors ${
-                        selected.length === 0
+                        !canSave
                             ? "bg-primary-light/30 cursor-not-allowed"
                             : "bg-primary-light hover:bg-primary-light/80 cursor-pointer"
                     }`}

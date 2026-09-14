@@ -4,9 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\DocTemplate;
 use App\Models\Document;
+use App\Models\DormOffers;
 use App\Models\Event;
+use App\Models\NeededDoc;
+use App\Models\Version;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\TemplateProcessor;
 
 class DocumentController extends Controller
@@ -102,6 +107,102 @@ class DocumentController extends Controller
             'id' => $doc->id,
             'url' => Storage::url($doc->path),
         ]));
+    }
+
+    public function get_all_documents(string $eventId)
+    {
+        $event = Event::with('assignedUser')->find($eventId);
+
+        if (! $event) {
+            return response()->json(['message' => 'event not found!'], 404);
+        }
+
+        $documents = collect();
+
+        if ($event->filePath && Storage::disk('public')->exists($event->filePath)) {
+            $documents->push([
+                'key' => 'attachment',
+                'category' => 'event_attachment',
+                'label' => 'Csatolt adatlap',
+                'filename' => basename($event->filePath),
+                'url' => Storage::url($event->filePath),
+                'size' => Storage::disk('public')->size($event->filePath),
+            ]);
+        }
+
+        foreach (Document::where('events_id', $event->id)->get() as $doc) {
+            if (! Storage::disk('public')->exists($doc->path)) {
+                continue;
+            }
+
+            $documents->push([
+                'key' => 'document_'.$doc->id,
+                'category' => 'uploaded',
+                'label' => 'Feltöltött dokumentum',
+                'filename' => basename($doc->path),
+                'url' => Storage::url($doc->path),
+                'size' => Storage::disk('public')->size($doc->path),
+            ]);
+        }
+
+        $neededTemplates = DocTemplate::whereIn(
+            'id',
+            NeededDoc::where('events_id', $event->id)->pluck('doc_templates_id')->unique()
+        )->get();
+
+        $hasAssignedUser = $event->assignedUser->isNotEmpty();
+
+        foreach ($neededTemplates as $template) {
+            $cleanPath = str_replace('storage/', '', $template->path);
+
+            if (! Storage::disk('public')->exists($cleanPath)) {
+                continue;
+            }
+
+            $documents->push([
+                'key' => 'needed_'.$template->id,
+                'category' => 'needed_template',
+                'label' => $template->name,
+                'filename' => basename($cleanPath),
+                'url' => '/api/download-file/'.$template->id,
+                'size' => null,
+            ]);
+
+            if ($hasAssignedUser) {
+                $documents->push([
+                    'key' => 'needed_'.$template->id.'_generated',
+                    'category' => 'generated',
+                    'label' => $template->name.' (kitöltött)',
+                    'filename' => null,
+                    'url' => '/api/generate-docx/'.$event->id.'/'.$template->id,
+                    'size' => null,
+                ]);
+            }
+        }
+
+        if (Storage::disk('public')->exists('templates/rendezvenyi_engedely_template.docx')) {
+            $documents->push([
+                'key' => 'engedely',
+                'category' => 'generated',
+                'label' => 'Rendezvényi engedélyeztető',
+                'filename' => null,
+                'url' => '/api/engedelyezes/'.$event->id,
+                'size' => null,
+            ]);
+        }
+
+        if (Version::where('events_id', $event->id)->exists()) {
+            $documents->push([
+                'key' => 'offer_summary',
+                'category' => 'generated',
+                'label' => 'Árajánlat összesítő',
+                'filename' => null,
+                'url' => '/api/offer-summary/'.$event->id,
+                'size' => null,
+            ]);
+        }
+
+        return response()->json(['documents' => $documents->values()]);
     }
 
     public function generate_docx(string $eventId, string $type)
@@ -322,6 +423,290 @@ class DocumentController extends Controller
         $templateProcessor->saveAs($tempPath);
 
         return response()->download($tempPath, $fileName)->deleteFileAfterSend(true);
+    }
+
+    public function generateOfferSummary(string $eventId)
+    {
+        $event = Event::find($eventId);
+
+        if (! $event) {
+            return response()->json(['message' => 'event not found!'], 404);
+        }
+
+        $offerTypes = [
+            'famulus' => 'UF árajánlat',
+            'dorm' => 'Kollégiumi árajánlat',
+            'uni' => 'Egyetemi árajánlat',
+        ];
+
+        $sections = [];
+        $grandTotal = 0;
+
+        foreach ($offerTypes as $type => $label) {
+            $version = Version::where('events_id', $event->id)
+                ->where('offer_type', $type)
+                ->orderByDesc('version')
+                ->first();
+
+            if (! $version) {
+                continue;
+            }
+
+            $items = match ($type) {
+                'famulus' => $version->famulusOffers,
+                'dorm' => $version->dormOffers,
+                'uni' => $version->uniOffers,
+            };
+
+            if ($type === 'dorm' && $items->isEmpty() && empty($version->comment)) {
+                $items = DormOffers::where('events_id', $event->id)
+                    ->whereNull('versions_id')
+                    ->get();
+            }
+
+            $sections[] = [
+                'label' => $label,
+                'comment' => $version->comment,
+                'items' => $items,
+            ];
+
+            $grandTotal += $items->sum('total_price');
+        }
+
+        $phpWord = new PhpWord;
+        $section = $phpWord->addSection();
+
+        $section->addText('Elfogadott árajánlatok összesítője', ['bold' => true, 'size' => 16]);
+        $section->addTextBreak();
+        $section->addText('Rendezvény: '.$event->name);
+        $section->addText('Időtartam: '.str_replace('-', '.', $event->startDate).' – '.str_replace('-', '.', $event->endDate));
+        $section->addText('Helyszín: '.($event->location ?? '–'));
+        $section->addText('Szervező: '.($event->organizerFullName ?? '–'));
+        $section->addTextBreak();
+
+        if (empty($sections)) {
+            $section->addText('A rendezvényhez nem tartozik árajánlat.');
+        }
+
+        $headerCellStyle = ['bgColor' => 'D9D9D9'];
+        $bold = ['bold' => true];
+
+        foreach ($sections as $offerSection) {
+            $section->addText($offerSection['label'], ['bold' => true, 'size' => 13]);
+
+            if ($offerSection['items']->isEmpty()) {
+                $section->addText('Tétel nélküli árajánlat.');
+            } else {
+                $table = $section->addTable([
+                    'borderSize' => 6,
+                    'borderColor' => '000000',
+                    'cellMargin' => 80,
+                ]);
+
+                $table->addRow();
+                $table->addCell(4500, $headerCellStyle)->addText('Tétel', $bold);
+                $table->addCell(2000, $headerCellStyle)->addText('Mennyiség', $bold);
+                $table->addCell(2500, $headerCellStyle)->addText('Egységár', $bold);
+                $table->addCell(2500, $headerCellStyle)->addText('Összeg', $bold);
+
+                foreach ($offerSection['items'] as $item) {
+                    $table->addRow();
+                    $table->addCell(4500)->addText($item->offer_name);
+                    $table->addCell(2000)->addText((string) $item->duration);
+                    $table->addCell(2500)->addText(number_format((float) $item->price_per_unit, 0, ',', ' ').' Ft');
+                    $table->addCell(2500)->addText(number_format((float) $item->total_price, 0, ',', ' ').' Ft');
+                }
+
+                $table->addRow();
+                $table->addCell(4500, $headerCellStyle)->addText('Részösszeg', $bold);
+                $table->addCell(2000, $headerCellStyle)->addText('');
+                $table->addCell(2500, $headerCellStyle)->addText('');
+                $table->addCell(2500, $headerCellStyle)->addText(
+                    number_format((float) $offerSection['items']->sum('total_price'), 0, ',', ' ').' Ft',
+                    $bold
+                );
+            }
+
+            if (! empty($offerSection['comment'])) {
+                $section->addText('Megjegyzés: '.$offerSection['comment']);
+            }
+
+            $section->addTextBreak();
+        }
+
+        $section->addText(
+            'Összesített végösszeg: '.number_format((float) $grandTotal, 0, ',', ' ').' Ft',
+            ['bold' => true, 'size' => 13]
+        );
+
+        $fileName = 'ajanlat_osszesito_'.$event->id.'_'.time().'.docx';
+        $tempPath = storage_path('app/public/'.$fileName);
+
+        IOFactory::createWriter($phpWord)->save($tempPath);
+
+        return response()->download($tempPath, $fileName)->deleteFileAfterSend(true);
+    }
+
+    public function generateVersionOfferSummary(string $versionId)
+    {
+        $version = Version::with(['famulusOffers', 'dormOffers', 'uniOffers'])->find($versionId);
+
+        if (! $version) {
+            return response()->json(['message' => 'version not found!'], 404);
+        }
+
+        $event = Event::find($version->events_id);
+
+        if (! $event) {
+            return response()->json(['message' => 'event not found!'], 404);
+        }
+
+        $items = match ($version->offer_type) {
+            'famulus' => $version->famulusOffers,
+            'dorm' => $version->dormOffers,
+            'uni' => $version->uniOffers,
+            default => collect(),
+        };
+
+        $isLatest = ! Version::where('events_id', $event->id)
+            ->where('offer_type', $version->offer_type)
+            ->where('version', '>', $version->version)
+            ->exists();
+
+        if ($version->offer_type === 'dorm' && $isLatest && $items->isEmpty() && empty($version->comment)) {
+            $items = DormOffers::where('events_id', $event->id)
+                ->whereNull('versions_id')
+                ->get();
+        }
+
+        $fileName = 'ajanlat_osszesito_'.$version->offer_type.'_v'.$version->version.'_'.$event->id.'_'.time().'.docx';
+        $tempPath = storage_path('app/public/'.$fileName);
+
+        $doc = DocTemplate::where('type', 3)->orderByDesc('id')->first();
+        $templatePath = $doc
+            ? storage_path('app/public'.str_replace('/storage', '', $doc->path))
+            : null;
+
+        if ($templatePath && file_exists($templatePath)) {
+            $templateProcessor = new TemplateProcessor($templatePath);
+            $this->fillVersionSummaryFields($templateProcessor, $event, $version, $items);
+            $templateProcessor->saveAs($tempPath);
+        } else {
+            $this->buildVersionSummaryDocx($event, $version, $items, $tempPath);
+        }
+
+        return response()->download($tempPath, $fileName)->deleteFileAfterSend(true);
+    }
+
+    private function offerTypeLabel(string $offerType): string
+    {
+        return match ($offerType) {
+            'famulus' => 'UF árajánlat',
+            'dorm' => 'Kollégiumi árajánlat',
+            'uni' => 'Egyetemi árajánlat',
+            default => 'Árajánlat',
+        };
+    }
+
+    private function fillVersionSummaryFields(TemplateProcessor $tp, Event $event, Version $version, $items): void
+    {
+        $tp->setValue('rendezvenynev', $event->name ?? '');
+        $tp->setValue('idotartam', str_replace('-', '.', $event->startDate).' – '.str_replace('-', '.', $event->endDate));
+        $tp->setValue('helyszin', $event->location ?? '–');
+        $tp->setValue('szervezo', $event->organizerFullName ?? '–');
+        $tp->setValue('ajanlat_tipus', $this->offerTypeLabel($version->offer_type));
+        $tp->setValue('verzio', (string) $version->version);
+        $tp->setValue('letrehozva', $version->created_at?->format('Y.m.d H:i') ?? '–');
+        $tp->setValue('indoklas', $version->reason ?: '–');
+        $tp->setValue('megjegyzes', $version->comment ?: '–');
+        $tp->setValue('vegosszeg', number_format((float) $items->sum('total_price'), 0, ',', ' ').' Ft');
+
+        $rowCount = max($items->count(), 1);
+        $tp->cloneRow('megnevezes', $rowCount);
+
+        foreach ($items as $i => $offer) {
+            $idx = $i + 1;
+
+            $netto = (float) $offer->price_per_unit;
+            $brutto = (float) $offer->total_price;
+            $afa = $netto > 0 ? round((($brutto / $netto) - 1) * 100) : 0;
+
+            $tp->setValue("megnevezes#{$idx}", $offer->offer_name);
+            $tp->setValue("mennyiseg#{$idx}", $offer->duration);
+            $tp->setValue("netto_ar#{$idx}", number_format($netto, 0, ',', ' ').' Ft');
+            $tp->setValue("afa#{$idx}", $afa.'%');
+            $tp->setValue("brutto_ar#{$idx}", number_format($brutto, 0, ',', ' ').' Ft');
+        }
+
+        if ($items->isEmpty()) {
+            foreach (['megnevezes', 'mennyiseg', 'netto_ar', 'afa', 'brutto_ar'] as $key) {
+                $tp->setValue($key.'#1', '');
+            }
+        }
+    }
+
+    private function buildVersionSummaryDocx(Event $event, Version $version, $items, string $tempPath): void
+    {
+        $phpWord = new PhpWord;
+        $section = $phpWord->addSection();
+
+        $section->addText('Árajánlat összesítő', ['bold' => true, 'size' => 16]);
+        $section->addText($this->offerTypeLabel($version->offer_type).' – '.$version->version.'. verzió', ['bold' => true, 'size' => 13]);
+        $section->addTextBreak();
+        $section->addText('Rendezvény: '.$event->name);
+        $section->addText('Időtartam: '.str_replace('-', '.', $event->startDate).' – '.str_replace('-', '.', $event->endDate));
+        $section->addText('Helyszín: '.($event->location ?? '–'));
+        $section->addText('Szervező: '.($event->organizerFullName ?? '–'));
+        $section->addText('Létrehozva: '.($version->created_at?->format('Y.m.d H:i') ?? '–'));
+
+        if (! empty($version->reason)) {
+            $section->addText('Indoklás: '.$version->reason);
+        }
+
+        $section->addTextBreak();
+
+        $headerCellStyle = ['bgColor' => 'D9D9D9'];
+        $bold = ['bold' => true];
+
+        if ($items->isEmpty()) {
+            $section->addText('Tétel nélküli árajánlat.');
+        } else {
+            $table = $section->addTable([
+                'borderSize' => 6,
+                'borderColor' => '000000',
+                'cellMargin' => 80,
+            ]);
+
+            $table->addRow();
+            $table->addCell(4500, $headerCellStyle)->addText('Tétel', $bold);
+            $table->addCell(2000, $headerCellStyle)->addText('Mennyiség', $bold);
+            $table->addCell(2500, $headerCellStyle)->addText('Egységár', $bold);
+            $table->addCell(2500, $headerCellStyle)->addText('Összeg', $bold);
+
+            foreach ($items as $item) {
+                $table->addRow();
+                $table->addCell(4500)->addText($item->offer_name);
+                $table->addCell(2000)->addText((string) $item->duration);
+                $table->addCell(2500)->addText(number_format((float) $item->price_per_unit, 0, ',', ' ').' Ft');
+                $table->addCell(2500)->addText(number_format((float) $item->total_price, 0, ',', ' ').' Ft');
+            }
+
+            $table->addRow();
+            $table->addCell(4500, $headerCellStyle)->addText('Végösszeg', $bold);
+            $table->addCell(2000, $headerCellStyle)->addText('');
+            $table->addCell(2500, $headerCellStyle)->addText('');
+            $table->addCell(2500, $headerCellStyle)->addText(
+                number_format((float) $items->sum('total_price'), 0, ',', ' ').' Ft',
+                $bold
+            );
+        }
+
+        if (! empty($version->comment)) {
+            $section->addTextBreak();
+            $section->addText('Megjegyzés: '.$version->comment);
+        }
+
+        IOFactory::createWriter($phpWord)->save($tempPath);
     }
 
     private function boolLabel($value): string

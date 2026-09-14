@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth as FacadesAuth;
+use Illuminate\Support\Facades\Cache;
+use Laravel\Sanctum\PersonalAccessToken;
 use OneLogin\Saml2\Auth;
 
 class SamlController extends Controller
@@ -55,11 +57,19 @@ class SamlController extends Controller
         $token = $user->createToken('szeREndezoToken')->plainTextToken;
         $user->save();
 
+        Cache::put($this->samlCacheKey($token), [
+            'nameId' => $auth->getNameId(),
+            'sessionIndex' => $auth->getSessionIndex(),
+            'nameIdFormat' => $auth->getNameIdFormat(),
+            'nameIdNameQualifier' => $auth->getNameIdNameQualifier(),
+            'nameIdSPNameQualifier' => $auth->getNameIdSPNameQualifier(),
+        ], now()->addDay());
+
         // $cookieDomain = parse_url(env('FRONT_URL'), PHP_URL_HOST);
         // $isSecure = str_starts_with(env('FRONT_URL'), 'https://');
 
         return response()
-            ->redirectTo(env('FRONT_URL'))
+            ->redirectTo($this->frontUrl())
             ->withCookie(cookie('auth_token', $token, 60, '/', null, false, false));
     }
 
@@ -71,32 +81,63 @@ class SamlController extends Controller
         return response($metadata, 200)->header('Content-Type', 'application/xml');
     }
 
-    public function logout()
+    public function logout(Request $request)
     {
+        $token = $request->cookie('auth_token') ?? $request->query('token');
+        $redirectUrl = $this->frontUrl();
 
-        $auth = $this->samlAuth();
-        cookie()->queue(cookie()->forget('auth_token', '/', null));
-        return redirect($auth->logout());
+        if ($token) {
+            $saml = Cache::pull($this->samlCacheKey($token));
+            PersonalAccessToken::findToken($token)?->delete();
+
+            if (! empty($saml['nameId'])) {
+                $auth = $this->samlAuth();
+                $redirectUrl = $auth->logout(
+                    null,
+                    [],
+                    $saml['nameId'],
+                    $saml['sessionIndex'] ?? null,
+                    true,
+                    $saml['nameIdFormat'] ?? null,
+                    $saml['nameIdNameQualifier'] ?? null,
+                    $saml['nameIdSPNameQualifier'] ?? null
+                );
+            }
+        }
+
+        return redirect($redirectUrl)->withCookie(cookie()->forget('auth_token', '/', null));
     }
 
     public function sls(Request $request)
     {
-        $cookieDomain = parse_url(env('FRONT_URL'), PHP_URL_HOST);
+        if ($token = $request->cookie('auth_token')) {
+            PersonalAccessToken::findToken($token)?->delete();
+            Cache::forget($this->samlCacheKey($token));
+        }
 
-        FacadesAuth::user()->tokens()->delete();
-        FacadesAuth::logout();
+        $redirectUrl = $this->frontUrl();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        try {
+            $auth = $this->samlAuth();
+            $sloResponseUrl = $auth->processSLO(true, null, false, null, true);
+            if (is_string($sloResponseUrl) && $sloResponseUrl !== '') {
+                $redirectUrl = $sloResponseUrl;
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
-        cookie()->queue(cookie()->forget('auth_token', '/', null));
+        return redirect($redirectUrl)->withCookie(cookie()->forget('auth_token', '/', null));
+    }
 
-        $auth = $this->samlAuth();
-        $auth->processSLO();
+    protected function samlCacheKey(string $token): string
+    {
+        return 'saml_slo:' . hash('sha256', $token);
+    }
 
-        return response()
-            ->redirectTo(env('FRONT_URL'))
-            ->withoutCookie('auth_token', '/', null);
+    protected function frontUrl(): string
+    {
+        return rtrim(env('FRONT_URL') ?: config('app.url') ?: '/', '/');
     }
 
     public function attributeNormalizer($attributes)

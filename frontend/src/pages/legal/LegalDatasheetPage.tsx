@@ -31,10 +31,12 @@ const LegalDatasheetPage = () => {
     const handleSaveReviewedDocuments = async (files: File[]): Promise<boolean> => {
         setSaving(true);
         try {
-            const success = await uploadMultiDocuments(selectedEvent.id, files);
-            if (!success) {
-                showActionError();
-                return false;
+            if (files.length > 0) {
+                const success = await uploadMultiDocuments(selectedEvent.id, files);
+                if (!success) {
+                    showActionError();
+                    return false;
+                }
             }
 
             showActionSuccess("A jogi dokumentumok sikeresen mentésre kerültek.");
@@ -63,11 +65,11 @@ const LegalDatasheetPage = () => {
 
             <div className="min-tablet:flex-row min-tablet:items-center max-tablet:flex-wrap flex flex-col items-start justify-between gap-2">
                 <div className="flex flex-1 flex-col gap-1">
-                    <h1 className="flex-1 text-2xl font-bold" dangerouslySetInnerHTML={{ __html: selectedEvent.name }}></h1>
+                    <h1 className="flex-1 text-2xl font-bold">{selectedEvent.name}</h1>
                     <p className="text-sm">Esemény státusza</p>
                 </div>
                 <div className="flex w-full max-w-[608px] flex-row justify-end gap-2 max-lg:place-self-end max-sm:flex-wrap">
-                    {selectedEvent.status === "Szerződés áttnézésre vár" && (
+                    {selectedEvent.status === "Szerződés átnézésre vár" && (
                         <button
                             className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
                             onClick={() => setReviewModalOpen(true)}
@@ -93,10 +95,7 @@ const LegalDatasheetPage = () => {
                                 <div className="group flex cursor-pointer flex-row justify-between" onClick={() => toggleSection(index)}>
                                     <div className="flex flex-row items-center gap-2">
                                         <div className="bg-primary-light h-full w-1.5 rounded-full" />
-                                        <h2
-                                            className="group-hover:text-dark/80 text-xl font-semibold transition-colors"
-                                            dangerouslySetInnerHTML={{ __html: section.title }}
-                                        />
+                                        <h2 className="group-hover:text-dark/80 text-xl font-semibold transition-colors">{section.title}</h2>
                                     </div>
                                     <ChevronDown
                                         className={`transition-transform duration-500 ${isOpen ? "rotate-180" : ""}`}
@@ -161,7 +160,7 @@ const LegalDatasheetPage = () => {
                             )}
                         </div>
                     </div>
-                    <ChatHistory eventData={selectedEvent} />
+                    <ChatHistory eventData={selectedEvent} mode="legal" />
                 </div>
             </main>
         </div>

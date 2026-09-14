@@ -1,11 +1,13 @@
 <?php
 
+use App\Console\Commands\UpdateStatusAfterEndet;
 use App\Http\Controllers\DocTemplateController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DormPricesController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FamulusPriceController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OtherPriceController;
 use App\Http\Controllers\SamlController;
 use App\Http\Controllers\StatusController;
@@ -16,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/saml/login', [SamlController::class, 'login'])->name('login');
 Route::post('/saml/acs', [SamlController::class, 'acs']);
 Route::get('/saml/metadata', [SamlController::class, 'metadata']);
-Route::get('/saml/logout', [SamlController::class, 'logout'])->name('logout')->middleware('auth');
+Route::get('/saml/logout', [SamlController::class, 'logout'])->name('logout');
 Route::get('/saml/sls', [SamlController::class, 'sls']);
 
 Route::get('/me', [UserController::class, 'me']);
@@ -26,10 +28,11 @@ Route::get('/me', [UserController::class, 'me']);
 Route::post('/create-event', [EventController::class, 'create']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/events', [StatusController::class, 'get_events_by_status']);
+    Route::get('/statistics', [StatusController::class, 'get_statistics']);
 });
 
-
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/calendar-events', [EventController::class, 'calendar']);
     Route::post('/event', [EventController::class, 'show_one']);
     Route::post('/reject-event', [EventController::class, 'reject']);
     Route::post('/resigned-event', [EventController::class, 'resigned']);
@@ -59,14 +62,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/uni/accept-offer', [EventController::class, 'accept_offers']);
     Route::post('/uni/offer-modify', [EventController::class, 'uni_modify']);
 
-
     Route::post('/legal/contract-data', [EventController::class, 'add_contract_data']);
     Route::post('/legal/reviewe', [EventController::class, 'contract_reviewe']);
-    Route::post('/legal/accept-client', [EventController::class, 'contract_accept_by_client']); //Ügyfél által elfogadva
-    Route::post('/legal/accept-uni', [EventController::class, 'contract_accept_by_uni']); //Egyetem által elfogadva
-    Route::post('/legal/signed', [EventController::class, 'contract_signed']); //Szerződés aláírva
-    Route::post('/legal/completed', [EventController::class, 'event_completed']); //EZ átrakja az UF igazolásra vár, látszik a gomb, hogy UF Igazolás elfogadva, ez hívja a TIG-et.
-    Route::post('/legal/TIG', [EventController::class, 'contract_TIG']); // 
+    Route::post('/legal/accept-client', [EventController::class, 'contract_accept_by_client']); // Ügyfél által elfogadva
+    Route::post('/legal/accept-uni', [EventController::class, 'contract_accept_by_uni']); // Egyetem által elfogadva
+    Route::post('/legal/signed', [EventController::class, 'contract_signed']); // Szerződés aláírva
+    Route::post('/legal/completed', [EventController::class, 'event_completed']); // EZ átrakja az UF igazolásra vár, látszik a gomb, hogy UF Igazolás elfogadva, ez hívja a TIG-et.
+    Route::post('/legal/TIG', [EventController::class, 'contract_TIG']); //
     Route::post('/legal/informantwaiting', [EventController::class, 'adatkozlofelkuld']);
     Route::post('/legal/informantdone', [EventController::class, 'adatkozlofelkuldve']);
     Route::post('/legal/finish', [EventController::class, 'finish']);
@@ -79,7 +81,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/document/upload-multi', [DocumentController::class, 'upload_multiple']);
     Route::post('/document/delete', [DocumentController::class, 'delete']);
     Route::post('/document/event', [DocumentController::class, 'get_doc']);
+    Route::get('/downloadable-documents/{eventId}', [DocumentController::class, 'get_all_documents']);
     Route::get('/engedelyezes/{eventId}', [DocumentController::class, 'generateEngedely']);
+    Route::get('/offer-summary/{eventId}', [DocumentController::class, 'generateOfferSummary']);
 });
 
 // docx
@@ -136,6 +140,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/chat', [MessageController::class, 'get_chat']);
     Route::post('/send', [MessageController::class, 'send']);
+    Route::get('/chat/channels', [MessageController::class, 'channels']);
 });
 
 // File
@@ -160,7 +165,16 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/versions/{eventId}/{offerType}', [EventController::class, 'getVersions']);
     Route::get('/version/{versionId}', [EventController::class, 'getVersion']);
-
+    Route::get('/version/{versionId}/offer-summary', [DocumentController::class, 'generateVersionOfferSummary']);
 
     Route::post('/seen', [EventController::class, 'seen']);
 });
+
+// Notifications
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/notifications/read', [NotificationController::class, 'read']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+    Route::post('/settings/notifications/email', [NotificationController::class, 'setEmailNotifications']);
+});
+
+Route::get('/manualendevents', [UpdateStatusAfterEndet::class, 'handle']);

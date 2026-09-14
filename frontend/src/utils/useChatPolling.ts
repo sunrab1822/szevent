@@ -2,28 +2,29 @@ import { useEffect, useRef, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { getMessages } from "../actions/getMessages";
 import { SetMessages } from "../redux/action/chat/setMessages";
+import type { ChatChannel } from "../entitys/chat";
 
 const POLL_INTERVAL = 5000;
 
-export function useChatPolling(eventId: number) {
+export function useChatPolling(eventId: number, channel: ChatChannel) {
     const dispatch = useDispatch();
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const fetchMessages = useCallback(async () => {
         if (document.hidden) return;
         try {
-            getMessages(eventId);
+            getMessages(eventId, channel);
         } catch {
-            // silently fail — next poll will retry
+            // Silently fail, the next poll will retry.
         }
-    }, [eventId, dispatch]);
+    }, [eventId, channel]);
 
     useEffect(() => {
         fetchMessages();
         intervalRef.current = setInterval(fetchMessages, POLL_INTERVAL);
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
-            dispatch(SetMessages({ messages: [] }));
+            dispatch(SetMessages({ channel, eventId, messages: [] }));
         };
-    }, [fetchMessages]);
+    }, [fetchMessages, dispatch, channel, eventId]);
 }

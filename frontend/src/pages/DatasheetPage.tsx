@@ -1,6 +1,7 @@
-import { ChevronDown, DollarSign, Eye, FileText, Pencil, Save, Search, UserRoundMinus, UserRoundPlus, X, Check } from "lucide-react";
+import { Ban, Check, ChevronDown, DollarSign, Eye, FileText, MoreHorizontal, Pencil, Save, Search, UserRoundMinus, UserRoundPlus, X } from "lucide-react";
 import { useState } from "react";
-import { Modal } from "antd";
+import { Dropdown, Modal } from "antd";
+import type { MenuProps } from "antd";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate, useRevalidator } from "react-router-dom";
 import { addOrganizerToEvent } from "../actions/addOrganizerToEvent";
@@ -14,16 +15,18 @@ import AssignDocumentsModal from "../components/AssignDocumentsModal";
 import ChatHistory from "../components/ChatHistory";
 import ConfirmModal from "../components/ConfirmModal";
 import DetailRow from "../components/DetailRow";
+import DownloadableDocumentsModal from "../components/DownloadableDocumentsModal";
 import OfferVersionsModal from "../components/OfferVersionsModal";
 import SelectContractDocumentsModal from "../components/SelectContractDocumentsModal";
 import type { OfferType } from "../entitys/Offer";
 import { eventSections } from "../entitys/datasheetConfig";
+import { ROLES } from "../entitys/roles";
 import { EditSelectedEvent } from "../redux/action/events/editSelectedEvent";
 import { SetSidebarOpen } from "../redux/action/globalProps/setSidebarOpen";
 import { useSelector } from "../redux/store";
 import { showActionError, showActionSuccess } from "../utils/actionFeedback";
 import StatusHistory from "../components/StatusHistory";
-import { downloadAuthorizationDocument } from "../actions/downloadAuthorizationDocument";
+import { useSessionUser } from "../utils/useSessionUser";
 
 const LEGAL_STATUS_ACTIONS: Record<string, { buttonLabel: string; route: string; successMessage: string }> = {
     "Partneri aláírásra vár": {
@@ -62,6 +65,7 @@ const DatasheetPage = () => {
     const dispatch = useDispatch();
     const revalidator = useRevalidator();
     const navigate = useNavigate();
+    const user = useSessionUser();
     const { selectedEvent } = useSelector((state) => state.event);
     const { users } = useSelector((state) => state.users);
     const { versions } = useSelector((state) => state.offer);
@@ -69,10 +73,19 @@ const DatasheetPage = () => {
     const [openSections, setOpenSections] = useState<number[]>([0]);
     const [openOrganizersModal, setOpenOrganizersModal] = useState(false);
     const [versionsModalOpen, setVersionsModalOpen] = useState(false);
+    const [documentsModalOpen, setDocumentsModalOpen] = useState(false);
     const [contractDocumentsModalOpen, setContractDocumentsModalOpen] = useState(false);
     const [contractConfirmOpen, setContractConfirmOpen] = useState(false);
     const [selectedContractDocumentIds, setSelectedContractDocumentIds] = useState<number[]>([]);
     const [contractSelectionLoading, setContractSelectionLoading] = useState(false);
+    const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [rejectReason, setRejectReason] = useState("");
+    const [rejectReasonError, setRejectReasonError] = useState(false);
+    const [rejectLoading, setRejectLoading] = useState(false);
+    const [cancelModalOpen, setCancelModalOpen] = useState(false);
+    const [cancelReason, setCancelReason] = useState("");
+    const [cancelReasonError, setCancelReasonError] = useState(false);
+    const [cancelLoading, setCancelLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
 
     if (!selectedEvent) {
@@ -186,7 +199,129 @@ const DatasheetPage = () => {
         }
     };
 
+    const handleRejectEvent = async () => {
+        if (rejectReason.trim().length === 0) {
+            setRejectReasonError(true);
+            return;
+        }
+
+        setRejectLoading(true);
+        try {
+            const success = await statusChange("reject-event", selectedEvent.id, rejectReason.trim());
+            if (!success) {
+                showActionError();
+                return;
+            }
+
+            showActionSuccess("Rendezvény sikeresen elutasítva.");
+            setRejectModalOpen(false);
+            setRejectReason("");
+            setRejectReasonError(false);
+            revalidator.revalidate();
+        } finally {
+            setRejectLoading(false);
+        }
+    };
+
+    const handleCancelEvent = async () => {
+        if (cancelReason.trim().length === 0) {
+            setCancelReasonError(true);
+            return;
+        }
+
+        setCancelLoading(true);
+        try {
+            const success = await statusChange("resigned-event", selectedEvent.id, cancelReason.trim());
+            if (!success) {
+                showActionError();
+                return;
+            }
+
+            showActionSuccess("Rendezvény sikeresen lemondva.");
+            setCancelModalOpen(false);
+            setCancelReason("");
+            setCancelReasonError(false);
+            revalidator.revalidate();
+        } finally {
+            setCancelLoading(false);
+        }
+    };
+
     const legalStatusAction = LEGAL_STATUS_ACTIONS[selectedEvent.status] ?? null;
+    const canManageEvent = Number(user.role) === ROLES.ADMIN || Number(user.role) === ROLES.ORGANIZER;
+    const canRejectEvent = canManageEvent && selectedEvent.status === "Beérkezett";
+    const canCancelEvent = canManageEvent;
+    const primaryActionClassName =
+        "bg-primary-light flex h-10 cursor-pointer flex-row items-center justify-center gap-1 rounded-md px-4 py-2 text-sm whitespace-nowrap text-white max-sm:w-full";
+
+    const openRejectModal = () => {
+        setRejectReason("");
+        setRejectReasonError(false);
+        setRejectModalOpen(true);
+    };
+
+    const openCancelModal = () => {
+        setCancelReason("");
+        setCancelReasonError(false);
+        setCancelModalOpen(true);
+    };
+
+    const startEditing = () => {
+        setIsEditing(true);
+        dispatch(SetSidebarOpen(false));
+    };
+
+    const moreActionItems: NonNullable<MenuProps["items"]> = [
+        {
+            key: "edit",
+            icon: <Pencil size={16} />,
+            label: "Szerkesztés",
+        },
+        {
+            key: "documents",
+            icon: <FileText size={16} />,
+            label: "Dokumentumok",
+        },
+    ];
+
+    if (canRejectEvent) {
+        moreActionItems.push({
+            key: "reject",
+            danger: true,
+            icon: <Ban size={16} />,
+            label: "Elutasítás",
+        });
+    }
+
+    if (canCancelEvent) {
+        moreActionItems.push({
+            key: "cancel",
+            danger: true,
+            icon: <X size={16} />,
+            label: "Lemondás",
+        });
+    }
+
+    const handleMoreActionClick: MenuProps["onClick"] = ({ key }) => {
+        if (key === "edit") {
+            startEditing();
+            return;
+        }
+
+        if (key === "documents") {
+            setDocumentsModalOpen(true);
+            return;
+        }
+
+        if (key === "reject") {
+            openRejectModal();
+            return;
+        }
+
+        if (key === "cancel") {
+            openCancelModal();
+        }
+    };
 
     return (
         <div className="flex w-full flex-col gap-6">
@@ -204,6 +339,11 @@ const DatasheetPage = () => {
                 onConfirm={handleConfirmContractSelection}
                 confirmLoading={contractSelectionLoading}
                 confirmDisabled={selectedContractDocumentIds.length === 0}
+            />
+            <DownloadableDocumentsModal
+                eventId={selectedEvent.id}
+                open={documentsModalOpen}
+                onClose={() => setDocumentsModalOpen(false)}
             />
             <Modal
                 title="Felelősök hozzáadása"
@@ -298,12 +438,12 @@ const DatasheetPage = () => {
                 </div>
             </Modal>
 
-            <div className="min-tablet:flex-row min-tablet:items-center max-tablet:flex-wrap flex flex-col items-start justify-between gap-2">
-                <div className="flex flex-1 flex-col gap-1">
-                    <h1 className="flex-1 text-2xl font-bold" dangerouslySetInnerHTML={{ __html: selectedEvent.name }}></h1>
+            <div className="flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <h1 className="w-full break-words text-2xl font-bold">{selectedEvent.name}</h1>
                     <p className="text-sm">Esemény státusza</p>
                 </div>
-                <div className="flex w-full max-w-[608px] flex-row justify-end gap-2 max-lg:place-self-end max-sm:flex-wrap">
+                <div className="flex w-full shrink-0 flex-row items-center justify-end gap-2 self-stretch max-sm:flex-col max-sm:items-stretch md:w-auto md:self-auto">
                     {isEditing && (
                         <div className="bg-primary-light relative flex w-fit cursor-pointer items-center rounded-md p-1 select-none">
                             <div
@@ -334,7 +474,7 @@ const DatasheetPage = () => {
                     )}
                     {isEditing && (
                         <button
-                            className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
+                            className={primaryActionClassName}
                             onClick={handleCancel}
                         >
                             <X /> Mégse
@@ -343,14 +483,14 @@ const DatasheetPage = () => {
                     {!isEditing && selectedEvent.status === "Árajánlat készítésre vár" && (
                         <Link
                             to={`/assign-uni-price/${selectedEvent.id}`}
-                            className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
+                            className={primaryActionClassName}
                         >
                             <DollarSign /> Árajánlat adása
                         </Link>
                     )}
                     {!isEditing && reviewOfferType && (
                         <button
-                            className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
+                            className={primaryActionClassName}
                             onClick={handleOpenOfferVersions}
                         >
                             <Eye /> Árajánlat megtekintése
@@ -358,15 +498,15 @@ const DatasheetPage = () => {
                     )}
                     {!isEditing && selectedEvent.status === "Szerződéses adatokra vár" && (
                         <button
-                            className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
+                            className={primaryActionClassName}
                             onClick={() => setContractDocumentsModalOpen(true)}
                         >
                             <FileText /> Szerződések kiválasztása
                         </button>
                     )}
-                    {!isEditing && selectedEvent.status === "Beérkezett" &&(
+                    {!isEditing && selectedEvent.status === "Beérkezett" && (
                         <button
-                            className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
+                            className={primaryActionClassName}
                             onClick={handleNextStatus}
                         >
                             <Check /> Elfogadás
@@ -374,33 +514,27 @@ const DatasheetPage = () => {
                     )}
                     {!isEditing && legalStatusAction && (
                         <button
-                            className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
+                            className={primaryActionClassName}
                             onClick={handleNextStatus}
                         >
                             <FileText /> {legalStatusAction.buttonLabel}
                         </button>
                     )}
-                    <button
-                        className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
-                        onClick={
-                            isEditing
-                                ? handleSave
-                                : () => {
-                                      setIsEditing(!isEditing);
-                                      dispatch(SetSidebarOpen(false));
-                                  }
-                        }
-                    >
-                        {isEditing ? <Save /> : <Pencil />}
-                        {isEditing ? "Mentés" : "Szerkesztés"}
-                    </button>
-                    <button
-                        onClick={() => downloadAuthorizationDocument(selectedEvent.id, "Rendezvény engedélyeztető")}
-                        className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
-                    >
-                        <FileText />
-                        PDF generálása
-                    </button>
+                    {isEditing ? (
+                        <button className={primaryActionClassName} onClick={handleSave}>
+                            <Save /> Mentés
+                        </button>
+                    ) : (
+                        <Dropdown menu={{ items: moreActionItems, onClick: handleMoreActionClick }} trigger={["click"]} placement="bottomRight">
+                            <button
+                                type="button"
+                                className="border-primary-light text-primary-light flex h-10 cursor-pointer flex-row items-center justify-center gap-1 rounded-md border bg-white px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-[#f1f9fb] max-sm:w-full"
+                            >
+                                <MoreHorizontal size={18} />
+                                Műveletek
+                            </button>
+                        </Dropdown>
+                    )}
                 </div>
             </div>
 
@@ -413,10 +547,7 @@ const DatasheetPage = () => {
                                 <div className="group flex cursor-pointer flex-row justify-between" onClick={() => toggleSection(index)}>
                                     <div className="flex flex-row items-center gap-2">
                                         <div className="bg-primary-light h-full w-1.5 rounded-full" />
-                                        <h2
-                                            className="group-hover:text-dark/80 text-xl font-semibold transition-colors"
-                                            dangerouslySetInnerHTML={{ __html: section.title }}
-                                        />
+                                        <h2 className="group-hover:text-dark/80 text-xl font-semibold transition-colors">{section.title}</h2>
                                     </div>
                                     <ChevronDown
                                         className={`transition-transform duration-500 ${isOpen ? "rotate-180" : ""}`}
@@ -484,7 +615,7 @@ const DatasheetPage = () => {
                             )}
                         </div>
                     </div>
-                    <ChatHistory eventData={selectedEvent} />
+                    <ChatHistory eventData={selectedEvent} mode="organizer" />
                 </div>
             </main>
 
@@ -507,6 +638,88 @@ const DatasheetPage = () => {
                 currentVersionId={versions.find((version) => version.current)?.id ?? null}
                 onSelectVersion={(versionId) => reviewOfferType && navigate(`/offers/${selectedEvent.id}/${reviewOfferType}/${versionId}`)}
             />
+            <Modal
+                title="Rendezvény elutasítása"
+                open={rejectModalOpen}
+                onCancel={rejectLoading ? undefined : () => setRejectModalOpen(false)}
+                width={480}
+                footer={
+                    <div className="mt-4 flex justify-end gap-2">
+                        <button
+                            onClick={() => setRejectModalOpen(false)}
+                            disabled={rejectLoading}
+                            className="cursor-pointer rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            Mégse
+                        </button>
+                        <button
+                            onClick={handleRejectEvent}
+                            disabled={rejectLoading}
+                            className="flex h-fit cursor-pointer flex-row gap-1 rounded-md bg-red-500 px-4 py-2 text-white transition-colors hover:bg-red-500/80 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {rejectLoading ? "Mentés..." : "Elutasítás"}
+                        </button>
+                    </div>
+                }
+            >
+                <div className="flex flex-col gap-1.5 py-2">
+                    <label className="text-[10px] font-semibold tracking-wide text-[#3e484c]/50 uppercase">Elutasítás indoka</label>
+                    <textarea
+                        rows={4}
+                        value={rejectReason}
+                        onChange={(e) => {
+                            setRejectReason(e.target.value);
+                            if (e.target.value.trim().length > 0) setRejectReasonError(false);
+                        }}
+                        placeholder="Adja meg, miért utasítja el a rendezvényt..."
+                        className={`w-full resize-none rounded-md border bg-gray-50/60 px-3 py-2 text-sm text-[#3e484c] placeholder:text-[#3e484c]/30 focus:ring-2 focus:outline-none ${
+                            rejectReasonError ? "border-red-300 focus:ring-red-300/40" : "focus:ring-primary-light/40 border-[#3e484c]/10"
+                        }`}
+                    />
+                    {rejectReasonError && <p className="text-[11px] text-red-500">Az indoklás megadása kötelező.</p>}
+                </div>
+            </Modal>
+            <Modal
+                title="Rendezvény lemondása"
+                open={cancelModalOpen}
+                onCancel={cancelLoading ? undefined : () => setCancelModalOpen(false)}
+                width={480}
+                footer={
+                    <div className="mt-4 flex justify-end gap-2">
+                        <button
+                            onClick={() => setCancelModalOpen(false)}
+                            disabled={cancelLoading}
+                            className="cursor-pointer rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            Mégse
+                        </button>
+                        <button
+                            onClick={handleCancelEvent}
+                            disabled={cancelLoading}
+                            className="flex h-fit cursor-pointer flex-row gap-1 rounded-md bg-red-500 px-4 py-2 text-white transition-colors hover:bg-red-500/80 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {cancelLoading ? "Mentés..." : "Lemondás"}
+                        </button>
+                    </div>
+                }
+            >
+                <div className="flex flex-col gap-1.5 py-2">
+                    <label className="text-[10px] font-semibold tracking-wide text-[#3e484c]/50 uppercase">Lemondás indoka</label>
+                    <textarea
+                        rows={4}
+                        value={cancelReason}
+                        onChange={(e) => {
+                            setCancelReason(e.target.value);
+                            if (e.target.value.trim().length > 0) setCancelReasonError(false);
+                        }}
+                        placeholder="Adja meg, miért mondja le a rendezvényt..."
+                        className={`w-full resize-none rounded-md border bg-gray-50/60 px-3 py-2 text-sm text-[#3e484c] placeholder:text-[#3e484c]/30 focus:ring-2 focus:outline-none ${
+                            cancelReasonError ? "border-red-300 focus:ring-red-300/40" : "focus:ring-primary-light/40 border-[#3e484c]/10"
+                        }`}
+                    />
+                    {cancelReasonError && <p className="text-[11px] text-red-500">Az indoklás megadása kötelező.</p>}
+                </div>
+            </Modal>
         </div>
     );
 };

@@ -16,6 +16,7 @@ class UserController extends Controller
     {
         if (Auth::guard('sanctum')->check()) {
             $user = Auth::guard('sanctum')->user();
+            $user->load(['notifications' => fn ($q) => $q->with('event')->latest()->limit(100)]);
 
             return response()->json([
                 'loggedin' => true,
@@ -78,7 +79,7 @@ class UserController extends Controller
 
         $path = $file->storeAs('profilpicks', $filename, 'public');
 
-        $user->picture = env('APP_URL') .  Storage::url($path);
+        $user->picture = env('APP_URL') . Storage::url($path);
         $user->save();
 
         return response()->json($user);

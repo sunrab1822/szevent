@@ -2,18 +2,27 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Message extends Model
 {
-    protected $fillable = ['users_id','events_id','message'];
+    protected $fillable = ['users_id', 'events_id', 'channel', 'message', 'mentions'];
 
+    /**
+     * Mentioned users: list of {userId, displayName, start, end}.
+     */
+    protected function mentions(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $value ? json_decode($value, true) : [],
+            set: fn ($value) => json_encode($value ?? []),
+        );
+    }
 
     /**
      * Get the sender associated with the Message
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
     public function sender(): HasOne
     {

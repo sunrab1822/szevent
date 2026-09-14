@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\Status;
 use App\Models\AssignUser;
 use App\Models\Event;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -54,6 +55,12 @@ class StatusController extends Controller
         ->where('seen', false)
         ->whereIn('events_id', $allEventIds)
         ->pluck('events_id')
+        ->merge(
+            Notification::where('users_id', $userId)
+                ->whereNull('read_at')
+                ->whereIn('events_id', $allEventIds)
+                ->pluck('events_id')
+        )
         ->flip();
 
     foreach ($stats as $group => $events) {
@@ -63,5 +70,87 @@ class StatusController extends Controller
     }
 
     return response()->json($stats);
+}
+
+public function get_statistics(Request $req)
+{
+    $period = $req->input('period', 'year');
+    if (! in_array($period, ['week', 'month', 'year'])) {
+        $period = 'year';
+    }
+
+    $days = match ($period) {
+        'week' => 7,
+        'month' => 30,
+        'year' => 365,
+    };
+
+    $allEvents = Event::select('id', 'name', 'status', 'startDate', 'endDate', 'created_at')
+        ->orderByDesc('created_at')
+        ->get();
+
+    $received = $allEvents->filter(
+        fn ($event) => $event->created_at >= now()->subDays($days)
+    )->values();
+
+    $groupByStatus = function ($events) {
+        $grouped = $events->groupBy('status');
+
+        return collect(Status::cases())->mapWithKeys(function ($status) use ($grouped) {
+            $statusEvents = $grouped->get($status->value, collect());
+
+            return [$status->value => [
+                'count' => $statusEvents->count(),
+                'events' => $statusEvents->values(),
+            ]];
+        });
+    };
+
+    $statusCounts = function ($events) {
+        $counts = collect(Status::cases())
+            ->mapWithKeys(fn ($status) => [$status->value => 0])
+            ->all();
+
+        foreach ($events->groupBy('status') as $status => $statusEvents) {
+            $counts[$status] = $statusEvents->count();
+        }
+
+        return $counts;
+    };
+
+    $timeline = $received->groupBy(function ($event) use ($period) {
+        return match ($period) {
+            'week' => $event->created_at->toDateString(),
+            'month' => $event->created_at->format('o').'-W'.$event->created_at->format('W'),
+            'year' => $event->created_at->format('Y-m'),
+        };
+    })->sortKeys()->map(function ($events, $key) use ($period, $statusCounts) {
+        $first = $events->min('created_at');
+
+        return [
+            'period' => $key,
+            'start' => match ($period) {
+                'week' => $first->toDateString(),
+                'month' => $first->copy()->startOfWeek()->toDateString(),
+                'year' => $first->copy()->startOfMonth()->toDateString(),
+            },
+            'total' => $events->count(),
+            'statuses' => $statusCounts($events),
+        ];
+    })->values();
+
+    return response()->json([
+        'period' => $period,
+        'all' => [
+            'total' => $allEvents->count(),
+            'statuses' => $groupByStatus($allEvents),
+        ],
+        'received' => [
+            'days' => $days,
+            'total' => $received->count(),
+            'statuses' => $groupByStatus($received),
+            'timeline' => $timeline,
+        ],
+    ]);
 }
 }

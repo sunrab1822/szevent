@@ -9,15 +9,17 @@ use App\Models\DormOffers;
 use App\Models\Event;
 use App\Models\FamulusOffers;
 use App\Models\NeededDoc;
+use App\Models\Notification;
 use App\Models\UniOffers;
 use App\Models\Version;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 
 class EventController extends Controller
 {
-    private function createVersion(Event $event, string $offerType, ?string $reason): Version
+    private function createVersion(Event $event, string $offerType, ?string $reason, ?string $comment = null): Version
     {
         $lastVersion = Version::where('events_id', $event->id)
             ->where('offer_type', $offerType)
@@ -28,6 +30,7 @@ class EventController extends Controller
             'events_id' => $event->id,
             'offer_type' => $offerType,
             'reason' => $reason,
+            'comment' => $comment,
             'version' => $lastVersion ? $lastVersion->version + 1 : 1,
         ]);
     }
@@ -75,6 +78,11 @@ class EventController extends Controller
         if ($assignuser) {
             $assignuser->update(['seen' => true]);
         }
+
+        Notification::where('users_id', Auth::id())
+            ->where('events_id', $req->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
 
         return response()->json([
             'event' => $event,
@@ -314,12 +322,13 @@ class EventController extends Controller
 
     public function famulus_offer(Request $req)
     {
+
         $event = Event::findOrFail($req->id);
 
-        $version = $this->createVersion($event, 'famulus', null);
+        $version = $this->createVersion($event, 'famulus', null, $req->comment);
 
         $price = 0;
-        foreach ($req->offers as $offer) {
+        foreach ($req->offers ?? [] as $offer) {
             $total_price = $offer['hours'] * $offer['customPrice'];
             FamulusOffers::create([
                 'events_id' => $event->id,
@@ -381,12 +390,17 @@ class EventController extends Controller
 
     public function dorm_offer(Request $req)
     {
+        $req->validate([
+            'offers' => ['nullable', 'array'],
+            'comment' => ['required_without:offers', 'nullable', 'string'],
+        ]);
+
         $event = Event::findOrFail($req->id);
 
-        $version = $this->createVersion($event, 'dorm', null);
+        $version = $this->createVersion($event, 'dorm', null, $req->comment);
 
         $price = 0;
-        foreach ($req->offers as $offer) {
+        foreach ($req->offers ?? [] as $offer) {
             $total_price = $offer['hours'] * $offer['CustomPrice'];
             DormOffers::create([
                 'events_id' => $event->id,
@@ -447,11 +461,16 @@ class EventController extends Controller
 
     public function uni_offer(Request $req)
     {
+        $req->validate([
+            'offers' => ['nullable', 'array'],
+            'comment' => ['required_without:offers', 'nullable', 'string'],
+        ]);
+
         $event = Event::findOrFail($req->id);
 
-        $version = $this->createVersion($event, 'uni', '');
+        $version = $this->createVersion($event, 'uni', '', $req->comment);
         $price = 0;
-        foreach ($req->offers as $offer) {
+        foreach ($req->offers ?? [] as $offer) {
             $total_price = $offer['quantity'] * $offer['customPrice'];
             UniOffers::create([
                 'events_id' => $event->id,
@@ -732,7 +751,12 @@ class EventController extends Controller
         $versions = Version::where('events_id', $eventId)
             ->where('offer_type', $offerType)
             ->orderBy('version')
-            ->get();
+            ->get()
+            ->map(function ($version) {
+                $version->summary_url = '/api/version/'.$version->id.'/offer-summary';
+
+                return $version;
+            });
 
         return response()->json($versions);
     }
@@ -746,11 +770,52 @@ class EventController extends Controller
             'id' => $version->id,
             'version' => $version->version,
             'reason' => $version->reason,
+            'comment' => $version->comment,
             'offer_type' => $version->offer_type,
             'offers' => $version->famulusOffers
                 ->concat($version->dormOffers)
                 ->concat($version->uniOffers)
                 ->values(),
+        ]);
+    }
+
+    public function calendar(Request $req)
+    {
+        $req->validate([
+            'startDate' => 'required|date',
+            'endDate' => 'required|date',
+        ]);
+
+        $events = Event::whereDate('startDate', '<=', $req->endDate)
+            ->whereDate('endDate', '>=', $req->startDate)
+            ->orderBy('startDate')
+            ->get(['id', 'name', 'startDate', 'endDate', 'status', 'location']);
+
+        $eventIds = $events->pluck('id');
+        $userId = Auth::id();
+
+        $unseenEventIds = AssignUser::where('users_id', $userId)
+            ->where('seen', false)
+            ->whereIn('events_id', $eventIds)
+            ->pluck('events_id')
+            ->merge(
+                Notification::where('users_id', $userId)
+                    ->whereNull('read_at')
+                    ->whereIn('events_id', $eventIds)
+                    ->pluck('events_id')
+            )
+            ->flip();
+
+        return response()->json([
+            'events' => $events->map(fn ($event) => [
+                'id' => $event->id,
+                'name' => $event->name,
+                'startDate' => Carbon::parse($event->startDate)->format('Y-m-d'),
+                'endDate' => Carbon::parse($event->endDate)->format('Y-m-d'),
+                'status' => $event->status,
+                'location' => $event->location,
+                'unSeen' => isset($unseenEventIds[$event->id]),
+            ])->values(),
         ]);
     }
 
@@ -762,6 +827,11 @@ class EventController extends Controller
             ->first();
 
         $assignuser->update(['seen' => true]);
+
+        Notification::where('users_id', Auth::id())
+            ->where('events_id', $req->eventId)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
 
         return response()->json();
     }

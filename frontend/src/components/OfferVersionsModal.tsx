@@ -1,6 +1,8 @@
 import { Modal } from "antd";
-import { FileClock } from "lucide-react";
+import { Download, FileClock } from "lucide-react";
+import { downloadFileFromUrl } from "../actions/downloadFileFromUrl";
 import type { OfferVersion } from "../entitys/Offer";
+import { showActionError } from "../utils/actionFeedback";
 
 interface OfferVersionsModalProps {
     open: boolean;
@@ -21,6 +23,17 @@ const formatDate = (iso?: string) =>
 
 const OfferVersionsModal = ({ open, onClose, versions, currentVersionId, onSelectVersion }: OfferVersionsModalProps) => {
     const sortedVersions = [...versions].sort((a, b) => b.version - a.version);
+
+    const handleDownloadVersion = async (version: OfferVersion) => {
+        const success = await downloadFileFromUrl(
+            `/api/version/${version.id}/offer-summary`,
+            `arajanlat-${version.offer_type}-${version.version}-verzio.docx`
+        );
+
+        if (!success) {
+            showActionError();
+        }
+    };
 
     return (
         <Modal
@@ -50,12 +63,20 @@ const OfferVersionsModal = ({ open, onClose, versions, currentVersionId, onSelec
                     const isCurrent = currentVersionId === version.id || version.current;
 
                     return (
-                        <button
+                        <div
                             key={version.id}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
                             onClick={() => {
                                 onSelectVersion(version.id);
                                 onClose();
+                            }}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    onSelectVersion(version.id);
+                                    onClose();
+                                }
                             }}
                             className="hover:border-primary-light flex cursor-pointer items-center gap-3 rounded-lg border border-[#3e484c]/10 px-4 py-3 text-left transition-colors hover:bg-blue-50/60"
                         >
@@ -74,7 +95,18 @@ const OfferVersionsModal = ({ open, onClose, versions, currentVersionId, onSelec
                                 <p className="text-[11px] text-[#3e484c]/50">{formatDate(version.created_at)}</p>
                                 {version.reason && <p className="mt-0.5 truncate text-[11px] text-[#3e484c]/70">Indok: {version.reason}</p>}
                             </div>
-                        </button>
+                            <button
+                                type="button"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    void handleDownloadVersion(version);
+                                }}
+                                className="text-primary-light flex flex-shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-medium transition-colors hover:bg-blue-100"
+                            >
+                                <Download size={14} />
+                                Letöltés
+                            </button>
+                        </div>
                     );
                 })}
             </div>

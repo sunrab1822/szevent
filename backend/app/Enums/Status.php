@@ -16,7 +16,7 @@ enum Status: string
     case JOVAHAGYVA = "Jóváhagyva";
     case MEGVALOSULASRA_VAR = "Megvalósulásra vár";
     case SZERZODESES_ADATOKRA_VAR = "Szerződéses adatokra vár";
-    case SZERZODES_ATTNEZESRE_VAR = "Szerződés áttnézésre vár"; // jog
+    case SZERZODES_ATTNEZESRE_VAR = "Szerződés átnézésre vár"; // jog
     case PARTNERI_ALAIRASRA_VAR = "Partneri aláírásra vár";
     case EGYETEMI_ALAIRASRA_VAR = "Egyetemi aláírásra vár";
     case SZERZODES_KIKULDESRE_VAR = "Szerződés kiküldésre vár";

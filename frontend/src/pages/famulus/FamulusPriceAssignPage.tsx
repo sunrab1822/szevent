@@ -13,10 +13,14 @@ import { showActionError, showActionSuccess } from "../../utils/actionFeedback";
 import { formatFt } from "../../utils/formatFt";
 import { parsePrice } from "../../utils/parsePrice";
 
-const FamulusPriceAssignPage = () => {
+interface FamulusPriceAssignPageProps {
+    routePrefix?: string;
+}
+
+const FamulusPriceAssignPage = ({ routePrefix = "" }: FamulusPriceAssignPageProps) => {
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState<SelectedItem[]>([]);
-    // const [reason, setReason] = useState("");
+    const [comment, setComment] = useState("");
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const famulusPrices = useSelector((state) => state.adminPrices.famulusPrices);
@@ -50,9 +54,12 @@ const FamulusPriceAssignPage = () => {
 
     const handleNewOffer = async () => {
         if (!id) return;
+        const trimmedComment = comment.trim();
+        if (selected.length === 0 && trimmedComment.length === 0) return;
+
         setSaving(true);
         try {
-            const success = await famulusNewOffer(Number(id), selected);
+            const success = await famulusNewOffer(Number(id), selected, trimmedComment);
             if (!success) {
                 showActionError();
                 return;
@@ -60,13 +67,16 @@ const FamulusPriceAssignPage = () => {
 
             showActionSuccess("Árajánlat sikeresen elmentve.");
             setConfirmOpen(false);
-            navigate(`/datasheet/${id}`);
+            navigate(`${routePrefix}/datasheet/${id}`);
         } finally {
             setSaving(false);
         }
     };
 
     const grandTotal = selected.reduce((sum, item) => sum + item.customPrice * item.hours, 0);
+    const trimmedComment = comment.trim();
+    const isEmptyOffer = selected.length === 0;
+    const canSave = !isEmptyOffer || trimmedComment.length > 0;
 
     const columns = useMemo<ColumnsType<SelectedItem>>(
         () => [
@@ -193,8 +203,15 @@ const FamulusPriceAssignPage = () => {
                     <>
                         <p className="font-medium">Biztosan menteni szeretné az árajánlatot?</p>
                         <p className="mt-1 text-[#3e484c]/70">
-                            A kiválasztott tételek összesen <span className="text-primary-light font-semibold">{formatFt(grandTotal)}</span>{" "}
-                            értékben kerülnek elmentésre.
+                            {isEmptyOffer ? (
+                                <>Az ajánlat tétel nélkül, a megadott megjegyzéssel kerül elmentésre.</>
+                            ) : (
+                                <>
+                                    A kiválasztott tételek összesen{" "}
+                                    <span className="text-primary-light font-semibold">{formatFt(grandTotal)}</span> értékben kerülnek
+                                    elmentésre.
+                                </>
+                            )}
                         </p>
                     </>
                 }
@@ -202,7 +219,7 @@ const FamulusPriceAssignPage = () => {
                 onCancel={() => setConfirmOpen(false)}
                 onConfirm={handleNewOffer}
                 confirmLoading={saving}
-                confirmDisabled={selected.length === 0}
+                confirmDisabled={!canSave}
             />
 
             <div className="text-[#3e484c]">
@@ -314,32 +331,40 @@ const FamulusPriceAssignPage = () => {
                         />
                     </div>
 
-                    {/* {selected.length > 0 && (
-                        <div className="rounded-md border border-[#3e484c]/10 bg-white p-4 shadow-sm">
+                    <div className="rounded-md border border-[#3e484c]/10 bg-white p-4 shadow-sm">
+                        <div className="mb-1.5 flex items-center justify-between gap-3">
                             <label className="mb-1.5 block text-[10px] font-semibold tracking-wide text-[#3e484c]/50 uppercase">
-                                Megjegyzés
+                                Megjegyzés {isEmptyOffer && <span className="text-red-500">*</span>}
                             </label>
-                            <textarea
-                                rows={3}
-                                value={reason}
-                                onChange={(e) => setReason(e.target.value)}
-                                placeholder="A kiválasztott tételek az alábbi ajánlathoz kerülnek hozzárendelésre..."
-                                className="focus:ring-primary-light/40 w-full resize-none rounded-md border border-[#3e484c]/10 bg-gray-50/60 px-3 py-2 text-sm text-[#3e484c] placeholder:text-[#3e484c]/30 focus:ring-2 focus:outline-none"
-                            />
+                            {isEmptyOffer && <span className="text-[11px] text-red-500">Tétel nélküli ajánlatnál kötelező</span>}
                         </div>
-                    )} */}
+                        <textarea
+                            rows={3}
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            placeholder={
+                                isEmptyOffer
+                                    ? "Írja le, miért kerül tétel nélkül mentésre az ajánlat..."
+                                    : "A kiválasztott tételek az alábbi megjegyzéssel kerülnek hozzárendelésre..."
+                            }
+                            className="focus:ring-primary-light/40 w-full resize-none rounded-md border border-[#3e484c]/10 bg-gray-50/60 px-3 py-2 text-sm text-[#3e484c] placeholder:text-[#3e484c]/30 focus:ring-2 focus:outline-none"
+                        />
+                    </div>
                 </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 border-t border-[#3e484c]/10 pt-5">
-                <button className="cursor-pointer rounded-md border border-[#3e484c]/15 px-5 py-2 text-sm text-[#3e484c] transition-colors hover:bg-gray-50">
+                <button
+                    onClick={() => (id ? navigate(`${routePrefix}/datasheet/${id}`) : navigate(-1))}
+                    className="cursor-pointer rounded-md border border-[#3e484c]/15 px-5 py-2 text-sm text-[#3e484c] transition-colors hover:bg-gray-50"
+                >
                     Mégse
                 </button>
                 <button
-                    disabled={selected.length === 0}
+                    disabled={!canSave}
                     onClick={() => setConfirmOpen(true)}
                     className={`flex items-center gap-2 rounded-md px-5 py-2 text-sm font-semibold text-white transition-colors ${
-                        selected.length === 0
+                        !canSave
                             ? "bg-primary-light/30 cursor-not-allowed"
                             : "bg-primary-light hover:bg-primary-light/80 cursor-pointer"
                     }`}
