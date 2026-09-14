@@ -2,11 +2,11 @@ import { useMemo, useState } from "react";
 import { History } from "lucide-react";
 import { Modal, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLoaderData, useLocation, useNavigate, useParams } from "react-router-dom";
 import ConfirmModal from "../components/ConfirmModal";
 import OfferVersionsModal from "../components/OfferVersionsModal";
 import { statusChange } from "../actions/statusChange";
-import type { OfferLine, OfferType } from "../entitys/Offer";
+import type { OfferLine, OfferType, OfferVersion } from "../entitys/Offer";
 import { ROLES } from "../entitys/roles";
 import { useSelector } from "../redux/store";
 import { showActionError, showActionSuccess } from "../utils/actionFeedback";
@@ -31,8 +31,14 @@ const OFFER_REJECT_ROUTES: Partial<Record<OfferType, string>> = {
     dorm: "dorm/offer-modify",
 };
 
+interface OfferReviewLoaderData {
+    relatedFamulusVersion: OfferVersion | null;
+}
+
 const OfferReviewPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { relatedFamulusVersion } = useLoaderData() as OfferReviewLoaderData;
     const user = useSessionUser();
     const { eventId, offerType } = useParams();
     const { selectedVersion, versions } = useSelector((state) => state.offer);
@@ -44,6 +50,7 @@ const OfferReviewPage = () => {
     const [saving, setSaving] = useState(false);
 
     const typedOfferType = (offerType as OfferType | undefined) ?? "famulus";
+    const routePrefix = location.pathname.startsWith("/famulus/") ? "/famulus" : "";
 
     const columns = useMemo<ColumnsType<OfferLine>>(
         () => [
@@ -89,12 +96,15 @@ const OfferReviewPage = () => {
     }
 
     const grandTotal = selectedVersion.offers.reduce((sum, item) => sum + item.total_price, 0);
+    const relatedFamulusTotal = relatedFamulusVersion?.offers.reduce((sum, item) => sum + item.total_price, 0) ?? 0;
     const latestVersion = versions.reduce(
         (latest, version) => (latest === null || version.version > latest.version ? version : latest),
         null as (typeof versions)[number] | null
     );
     const isNewestVersion = latestVersion ? latestVersion.id === selectedVersion.id : true;
-    const canManageOffer = user.role !== ROLES.FAMULUS;
+    const canManageOffer = Number(user.role) !== ROLES.FAMULUS;
+    const isRejectedVersion = Boolean(selectedVersion.reason);
+    const canShowOfferActions = canManageOffer && isNewestVersion && !isRejectedVersion;
 
     const handleAccept = async () => {
         const route = OFFER_ACCEPT_ROUTES[typedOfferType];
@@ -109,7 +119,7 @@ const OfferReviewPage = () => {
             }
 
             showActionSuccess("Árajánlat sikeresen elfogadva.");
-            navigate(`/datasheet/${eventId}`);
+            navigate(`${routePrefix}/datasheet/${eventId}`);
         } finally {
             setSaving(false);
             setAcceptModalOpen(false);
@@ -134,7 +144,7 @@ const OfferReviewPage = () => {
             }
 
             showActionSuccess("Árajánlat sikeresen elutasítva.");
-            navigate(`/datasheet/${eventId}`);
+            navigate(`${routePrefix}/datasheet/${eventId}`);
         } finally {
             setSaving(false);
             setRejectModalOpen(false);
@@ -158,7 +168,7 @@ const OfferReviewPage = () => {
                 onClose={() => setVersionsModalOpen(false)}
                 versions={versions}
                 currentVersionId={selectedVersion.id}
-                onSelectVersion={(versionId) => navigate(`/offers/${eventId}/${typedOfferType}/${versionId}`)}
+                onSelectVersion={(versionId) => navigate(`${routePrefix}/offers/${eventId}/${typedOfferType}/${versionId}`)}
             />
 
             <div className="flex items-start justify-between text-[#3e484c]">
@@ -179,9 +189,14 @@ const OfferReviewPage = () => {
                 )}
             </div>
 
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+                <span className="font-medium">Megjegyzés:</span>{" "}
+                {selectedVersion.comment ?? <span className="text-amber-700/60">Nincs megjegyzés megadva.</span>}
+            </div>
+
             {selectedVersion.reason && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
-                    <span className="font-medium">Megjegyzés:</span> {selectedVersion.reason}
+                <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600">
+                    <span className="font-medium">Elutasítás indoka:</span> {selectedVersion.reason}
                 </div>
             )}
 
@@ -207,7 +222,49 @@ const OfferReviewPage = () => {
                 />
             </div>
 
-            {isNewestVersion && canManageOffer && (
+            {typedOfferType === "uni" && relatedFamulusVersion && (
+                <div className="flex flex-col gap-3 border-t border-[#3e484c]/10 pt-6">
+                    <div className="text-[#3e484c]">
+                        <h2 className="text-lg font-bold">Kapcsolódó Famulus ajánlat</h2>
+                        <p className="mt-0.5 text-sm text-[#3e484c]/60">
+                            {relatedFamulusVersion.version}. verzió az eseményhez tartozó Famulus ajánlatból.
+                        </p>
+                    </div>
+
+                    <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+                        <span className="font-medium">Megjegyzés:</span>{" "}
+                        {relatedFamulusVersion.comment ?? <span className="text-amber-700/60">Nincs megjegyzés megadva.</span>}
+                    </div>
+
+                    <div className="overflow-hidden rounded-md border border-[#3e484c]/10 bg-white shadow-sm">
+                        <Table<OfferLine>
+                            rowKey="id"
+                            columns={columns}
+                            dataSource={relatedFamulusVersion.offers}
+                            pagination={false}
+                            scroll={{ x: 700 }}
+                            locale={{
+                                emptyText: (
+                                    <div className="py-10 text-center text-sm text-[#3e484c]/30">
+                                        Ez a Famulus verzió nem tartalmaz tételeket.
+                                    </div>
+                                ),
+                            }}
+                            summary={() => (
+                                <Table.Summary.Row>
+                                    <Table.Summary.Cell index={0} colSpan={4} className="!bg-gray-50/50 !px-5 !py-3.5 !text-right">
+                                        <span className="text-[13px] font-bold text-[#3e484c]">
+                                            Összesen: <span className="text-primary-light">{formatFt(relatedFamulusTotal)}</span>
+                                        </span>
+                                    </Table.Summary.Cell>
+                                </Table.Summary.Row>
+                            )}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {canShowOfferActions && (
                 <div className="flex items-center justify-end gap-3 border-t border-[#3e484c]/10 pt-5">
                     <button
                         onClick={() => {

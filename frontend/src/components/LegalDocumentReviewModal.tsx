@@ -62,14 +62,17 @@ const LegalDocumentReviewModal = ({ eventId, open, onClose, onConfirmSave, confi
         void loadDocuments();
     }, [eventId, open]);
 
-    const completedCount = useMemo(
-        () => documents.filter((document) => documentStates[document.id]?.downloaded && documentStates[document.id]?.uploadedFile).length,
+    const downloadedCount = useMemo(
+        () => documents.filter((document) => documentStates[document.id]?.downloaded).length,
         [documentStates, documents]
     );
 
-    const canSave =
-        documents.length > 0 &&
-        documents.every((document) => documentStates[document.id]?.downloaded && documentStates[document.id]?.uploadedFile !== null);
+    const uploadedCount = useMemo(
+        () => documents.filter((document) => documentStates[document.id]?.uploadedFile).length,
+        [documentStates, documents]
+    );
+
+    const canSave = documents.length > 0 && documents.every((document) => documentStates[document.id]?.downloaded);
 
     const handleDownload = async (document: Document) => {
         await downloadDocument(document.id, document.name);
@@ -126,9 +129,9 @@ const LegalDocumentReviewModal = ({ eventId, open, onClose, onConfirmSave, confi
                 title="Dokumentumok mentése"
                 message={
                     <>
-                        <p className="font-medium">Biztosan menteni szeretné a feltöltött dokumentumokat?</p>
+                        <p className="font-medium">Biztosan menteni szeretné a dokumentumok áttekintését?</p>
                         <p className="mt-1 text-[#3e484c]/70">
-                            {documents.length} kapcsolódó dokumentum került áttekintésre, és {completedCount} feltöltött fájl kerül elküldésre.
+                            {documents.length} kapcsolódó dokumentum került áttekintésre, és {uploadedCount} feltöltött fájl kerül elküldésre.
                         </p>
                     </>
                 }
@@ -147,7 +150,7 @@ const LegalDocumentReviewModal = ({ eventId, open, onClose, onConfirmSave, confi
                 footer={
                     <div className="mt-6 flex items-center justify-between gap-4">
                         <div className="text-left text-xs text-[#3e484c]/60">
-                            {completedCount} / {documents.length} dokumentum teljesítve
+                            {downloadedCount} / {documents.length} dokumentum letöltve
                         </div>
                         <div className="flex gap-2">
                             <button
@@ -169,7 +172,7 @@ const LegalDocumentReviewModal = ({ eventId, open, onClose, onConfirmSave, confi
                 }
             >
                 <div className="mb-4 rounded-lg border border-[#3e484c]/10 bg-[#f7fafb] px-4 py-3 text-sm text-[#3e484c]/80">
-                    Töltse le az összes kapcsolódó dokumentumot legalább egyszer, majd mindegyikhez töltsön fel egy `.docx` vagy `.pdf` fájlt.
+                    Töltse le az összes kapcsolódó dokumentumot legalább egyszer. Módosított `.docx` vagy `.pdf` fájl feltöltése opcionális.
                 </div>
 
                 <div className="flex max-h-[65vh] flex-col gap-3 overflow-y-auto pr-1">
@@ -212,7 +215,7 @@ const LegalDocumentReviewModal = ({ eventId, open, onClose, onConfirmSave, confi
                                                                 uploadedFile ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
                                                             }`}
                                                         >
-                                                            {uploadedFile ? `Feltöltve: ${uploadedFile.name}` : "Feltöltés hiányzik"}
+                                                            {uploadedFile ? `Feltöltve: ${uploadedFile.name}` : "Feltöltés opcionális"}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -251,10 +254,10 @@ const LegalDocumentReviewModal = ({ eventId, open, onClose, onConfirmSave, confi
                                         </div>
                                     </div>
 
-                                    {downloaded && uploadedFile && (
+                                    {downloaded && (
                                         <div className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-700">
                                             <CheckCircle2 size={14} />
-                                            A dokumentum feldolgozása kész, menthető.
+                                            A dokumentum áttekintése kész, menthető.
                                         </div>
                                     )}
                                 </div>

@@ -20,6 +20,13 @@ import { uniPriceAssignLoader } from "./loaders/uniPriceAssignLoader";
 import OfferReviewPage from "./pages/OfferReviewPage";
 import { offerReviewPageLoader } from "./loaders/offerReviewPageLoader";
 import SettingsPage from "./pages/SettingsPage";
+import FamulusEventsPage from "./pages/famulus/FamulusEventsPage";
+import { famulusEventsPageLoader } from "./loaders/famulusEventsPageLoader";
+import FamulusDatasheetPage from "./pages/famulus/FamulusDatasheetPage";
+import FamulusPriceAssignPage from "./pages/famulus/FamulusPriceAssignPage";
+import { famulusPriceAssignLoader } from "./loaders/famulusPriceAssignLoader";
+import LegalEventsPage from "./pages/legal/LegalEventsPage";
+import LegalDatasheetPage from "./pages/legal/LegalDatasheetPage";
 
 export const defaultRouter = [
     {
@@ -88,6 +95,42 @@ export const defaultRouter = [
                 element: <OfferReviewPage />,
                 path: "/offers/:eventId/:offerType/:versionId",
                 loader: offerReviewPageLoader,
+            },
+            {
+                element: <FamulusEventsPage routePrefix="/famulus" />,
+                id: "adminFamulusEvents",
+                path: "famulus/events",
+                loader: famulusEventsPageLoader,
+            },
+            {
+                element: <FamulusDatasheetPage routePrefix="/famulus" />,
+                id: "adminFamulusDatasheet",
+                path: "famulus/datasheet/:id",
+                loader: datasheetPageLoader,
+            },
+            {
+                element: <FamulusPriceAssignPage routePrefix="/famulus" />,
+                id: "adminFamulusAssignPrice",
+                path: "famulus/assign-price/:id",
+                loader: famulusPriceAssignLoader,
+            },
+            {
+                element: <OfferReviewPage />,
+                id: "adminFamulusOfferReview",
+                path: "famulus/offers/:eventId/:offerType/:versionId",
+                loader: offerReviewPageLoader,
+            },
+            {
+                element: <LegalEventsPage routePrefix="/legal" />,
+                id: "adminLegalEvents",
+                path: "legal/events",
+                loader: famulusEventsPageLoader,
+            },
+            {
+                element: <LegalDatasheetPage />,
+                id: "adminLegalDatasheet",
+                path: "legal/datasheet/:id",
+                loader: datasheetPageLoader,
             },
             {
                 element: <Navigate to="/" replace />,

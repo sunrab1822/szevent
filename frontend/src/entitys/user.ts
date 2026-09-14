@@ -1,4 +1,5 @@
 import type { ROLES } from "./roles";
+import type { UserNotification } from "./notification";
 
 export interface User {
     id: number;
@@ -11,4 +12,6 @@ export interface User {
     token: string;
     roleName: string;
     picture: string;
+    notifications?: UserNotification[];
+    email_notifications?: boolean;
 }

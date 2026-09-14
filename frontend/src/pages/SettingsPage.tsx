@@ -1,8 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Switch } from "antd";
 import { Upload } from "lucide-react";
 import { setPicture } from "../actions/setPicture";
+import { setNotificationEmailPreference } from "../actions/setNotificationEmailPreference";
 import { showActionError, showActionSuccess } from "../utils/actionFeedback";
 import { useSessionUser } from "../utils/useSessionUser";
+
+const acceptedImageMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const acceptedImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+const maxProfilePictureSize = 5 * 1024 * 1024;
+
+const isValidProfilePicture = (file: File) => {
+    const fileName = file.name.toLowerCase();
+    const hasAcceptedExtension = acceptedImageExtensions.some((extension) => fileName.endsWith(extension));
+    const hasAcceptedMimeType = acceptedImageMimeTypes.includes(file.type);
+
+    return hasAcceptedExtension && hasAcceptedMimeType && file.size <= maxProfilePictureSize;
+};
 
 const SettingsPage = () => {
     const user = useSessionUser();
@@ -10,6 +24,12 @@ const SettingsPage = () => {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(user.email_notifications ?? false);
+    const [emailNotificationSaving, setEmailNotificationSaving] = useState(false);
+
+    useEffect(() => {
+        setEmailNotificationsEnabled(user.email_notifications ?? false);
+    }, [user.email_notifications]);
 
     useEffect(() => {
         if (!selectedFile) {
@@ -27,7 +47,42 @@ const SettingsPage = () => {
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0] ?? null;
+
+        if (!file) {
+            setSelectedFile(null);
+            return;
+        }
+
+        if (!isValidProfilePicture(file)) {
+            setSelectedFile(null);
+            event.target.value = "";
+            showActionError("Csak JPG, PNG, WEBP vagy GIF kép tölthető fel, legfeljebb 5 MB méretben.");
+            return;
+        }
+
         setSelectedFile(file);
+    };
+
+    const handleEmailNotificationChange = async (checked: boolean) => {
+        if (emailNotificationSaving) return;
+
+        const previousValue = emailNotificationsEnabled;
+        setEmailNotificationsEnabled(checked);
+        setEmailNotificationSaving(true);
+
+        try {
+            const success = await setNotificationEmailPreference(checked);
+
+            if (!success) {
+                setEmailNotificationsEnabled(previousValue);
+                showActionError("Az e-mail értesítési beállítás mentése nem sikerült.");
+                return;
+            }
+
+            showActionSuccess("Az e-mail értesítési beállítás frissítve.");
+        } finally {
+            setEmailNotificationSaving(false);
+        }
     };
 
     const handleSubmit = async () => {
@@ -56,7 +111,7 @@ const SettingsPage = () => {
             <div className="text-[#3e484c]">
                 <h1 className="text-2xl font-bold">Beállítások</h1>
                 <p className="mt-0.5 max-w-2xl text-sm text-[#3e484c]/60">
-                    Itt frissítheti a fiókjához tartozó profilképet. A feltöltött kép a felhasználói felületen mindenhol meg fog jelenni.
+                    Itt frissítheti a fiókjához tartozó profilképet és az értesítési beállításait.
                 </p>
             </div>
 
@@ -82,11 +137,19 @@ const SettingsPage = () => {
                     <div className="flex min-w-0 flex-1 flex-col gap-5">
                         <div>
                             <h2 className="text-[13px] font-bold tracking-widest text-[#3e484c] uppercase">Profilkép feltöltése</h2>
-                            <p className="mt-1 text-sm text-[#3e484c]/60">Válasszon egy új képet, majd mentse el a módosítást.</p>
+                            <p className="mt-1 text-sm text-[#3e484c]/60">
+                                Válasszon egy új JPG, PNG, WEBP vagy GIF képet, majd mentse el a módosítást.
+                            </p>
                         </div>
 
                         <div className="rounded-xl border border-dashed border-[#3e484c]/15 bg-[#f8fafb] p-5">
-                            <input ref={inputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                            <input
+                                ref={inputRef}
+                                type="file"
+                                accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif"
+                                onChange={handleFileChange}
+                                className="hidden"
+                            />
 
                             <div className="flex flex-col gap-4">
                                 <div className="flex flex-col gap-1">
@@ -115,6 +178,22 @@ const SettingsPage = () => {
                                         {saving ? "Mentés..." : "Profilkép mentése"}
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl border border-[#3e484c]/10 bg-[#f8fafb] p-5">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                    <h2 className="text-[13px] font-bold tracking-widest text-[#3e484c] uppercase">E-mail értesítések</h2>
+                                    <p className="mt-1 text-sm text-[#3e484c]/60">
+                                        E-mailt is kérek, ha egy esemény értesítést kap a rendszerben.
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={emailNotificationsEnabled}
+                                    loading={emailNotificationSaving}
+                                    onChange={handleEmailNotificationChange}
+                                />
                             </div>
                         </div>
                     </div>

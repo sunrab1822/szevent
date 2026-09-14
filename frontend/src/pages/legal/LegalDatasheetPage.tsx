@@ -31,10 +31,12 @@ const LegalDatasheetPage = () => {
     const handleSaveReviewedDocuments = async (files: File[]): Promise<boolean> => {
         setSaving(true);
         try {
-            const success = await uploadMultiDocuments(selectedEvent.id, files);
-            if (!success) {
-                showActionError();
-                return false;
+            if (files.length > 0) {
+                const success = await uploadMultiDocuments(selectedEvent.id, files);
+                if (!success) {
+                    showActionError();
+                    return false;
+                }
             }
 
             showActionSuccess("A jogi dokumentumok sikeresen mentésre kerültek.");
@@ -67,7 +69,7 @@ const LegalDatasheetPage = () => {
                     <p className="text-sm">Esemény státusza</p>
                 </div>
                 <div className="flex w-full max-w-[608px] flex-row justify-end gap-2 max-lg:place-self-end max-sm:flex-wrap">
-                    {selectedEvent.status === "Szerződés áttnézésre vár" && (
+                    {selectedEvent.status === "Szerződés átnézésre vár" && (
                         <button
                             className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
                             onClick={() => setReviewModalOpen(true)}
@@ -161,7 +163,7 @@ const LegalDatasheetPage = () => {
                             )}
                         </div>
                     </div>
-                    <ChatHistory eventData={selectedEvent} />
+                    <ChatHistory eventData={selectedEvent} mode="legal" />
                 </div>
             </main>
         </div>
