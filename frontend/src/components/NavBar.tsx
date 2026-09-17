@@ -8,6 +8,9 @@ import { SetSidebarOpen } from "../redux/action/globalProps/setSidebarOpen";
 import { useNavigate } from "react-router-dom";
 import { formatTime } from "../utils/formatTime";
 import { authenticate } from "../actions/authenticate";
+import { readAllNotifications } from "../actions/readAllNotifications";
+
+const VISIBLE_NOTIFICATION_LIMIT = 20;
 
 const NavBar = () => {
     const user = useSessionUser();
@@ -15,8 +18,11 @@ const NavBar = () => {
     const navigate = useNavigate();
     const { sidebarOpen } = useSelector((state) => state.globalProps);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [readAllLoading, setReadAllLoading] = useState(false);
     const notificationsRef = useRef<HTMLDivElement | null>(null);
     const notifications = useMemo(() => user.notifications ?? [], [user.notifications]);
+    const visibleNotifications = useMemo(() => notifications.slice(0, VISIBLE_NOTIFICATION_LIMIT), [notifications]);
+    const hiddenNotificationsCount = Math.max(notifications.length - visibleNotifications.length, 0);
     const hasUnreadNotifications = notifications.some((notification) => !notification.read_at);
 
     const handleLogout = async () => {
@@ -26,6 +32,18 @@ const NavBar = () => {
     const handleNotificationClick = (eventId: number) => {
         setNotificationsOpen(false);
         navigate(`/datasheet/${eventId}`);
+    };
+
+    const handleReadAllNotifications = async () => {
+        if (readAllLoading || !hasUnreadNotifications) return;
+
+        setReadAllLoading(true);
+        const success = await readAllNotifications();
+        setReadAllLoading(false);
+
+        if (success) {
+            setNotificationsOpen(false);
+        }
     };
 
     useEffect(() => {
@@ -116,7 +134,7 @@ const NavBar = () => {
 
                             {notifications.length > 0 ? (
                                 <div className="max-h-[360px] overflow-y-auto">
-                                    {notifications.map((notification) => (
+                                    {visibleNotifications.map((notification) => (
                                         <button
                                             key={notification.id}
                                             className="flex w-full cursor-pointer flex-row gap-3 border-b border-[#3e484c]/10 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#3e484c]/5"
@@ -134,10 +152,25 @@ const NavBar = () => {
                                             </span>
                                         </button>
                                     ))}
+                                    {hiddenNotificationsCount > 0 && (
+                                        <div className="border-t border-[#3e484c]/10 px-4 py-3 text-center text-xs text-[#3e484c]/55">
+                                            További {hiddenNotificationsCount} értesítés nem jelenik meg.
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="px-4 py-6 text-center text-sm text-[#3e484c]/55">Nincs új értesítés.</div>
                             )}
+
+                            <div className="border-t border-[#3e484c]/10 bg-white px-4 py-3">
+                                <button
+                                    className="bg-primary-light flex w-full cursor-pointer items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:bg-[#3e484c]/20 disabled:text-[#3e484c]/45"
+                                    onClick={handleReadAllNotifications}
+                                    disabled={!hasUnreadNotifications || readAllLoading}
+                                >
+                                    {readAllLoading ? "Elfogadás..." : "Összes elfogadása"}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

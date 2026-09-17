@@ -14,6 +14,22 @@ interface CalendarDay {
     events: CalendarEvent[];
 }
 
+interface CalendarEventSegment {
+    event: CalendarEvent;
+    startColumn: number;
+    startDateKey: string;
+    endDateKey: string;
+    span: number;
+    row: number;
+    startsBeforeWeek: boolean;
+    endsAfterWeek: boolean;
+}
+
+interface CalendarWeek {
+    days: CalendarDay[];
+    segments: CalendarEventSegment[];
+}
+
 const WEEK_DAYS = ["H", "K", "Sze", "Cs", "P", "Szo", "V"];
 const STATISTICS_PERIOD_OPTIONS: { label: string; value: StatisticsPeriod }[] = [
     { label: "Hét", value: "week" },
@@ -21,6 +37,9 @@ const STATISTICS_PERIOD_OPTIONS: { label: string; value: StatisticsPeriod }[] = 
     { label: "Év", value: "year" },
 ];
 const CHART_COLORS = ["#50adc9", "#e06f5f", "#79a86b", "#e3aa4f", "#7a6fd1", "#d96ba8", "#4f8fba", "#9a7f5b"];
+const EVENT_DURATION_START_COLOR: [number, number, number] = [205, 245, 219];
+const EVENT_DURATION_MIDDLE_COLOR: [number, number, number] = [190, 232, 230];
+const EVENT_DURATION_END_COLOR: [number, number, number] = [186, 215, 247];
 const MONTH_FORMATTER = new Intl.DateTimeFormat("hu-HU", { month: "long", year: "numeric" });
 const DAY_FORMATTER = new Intl.DateTimeFormat("hu-HU", { month: "short", day: "numeric" });
 
@@ -43,15 +62,34 @@ const addDays = (date: Date, days: number) => {
     return nextDate;
 };
 
+const getCalendarStart = (monthStart: Date) => addDays(monthStart, -((monthStart.getDay() + 6) % 7));
+
+const getCalendarEnd = (monthEnd: Date) => addDays(monthEnd, 6 - ((monthEnd.getDay() + 6) % 7));
+
 const isToday = (date: Date) => toDateKey(date) === toDateKey(new Date());
 
-const isEventOnDay = (event: CalendarEvent, dayKey: string) => event.startDate.slice(0, 10) === dayKey;
+const getEventStartKey = (event: CalendarEvent) => event.startDate.slice(0, 10);
+
+const getEventEndKey = (event: CalendarEvent) => event.endDate.slice(0, 10);
+
+const isMultiDayEvent = (event: CalendarEvent) => getEventStartKey(event) !== getEventEndKey(event);
+
+const isEventOnDay = (event: CalendarEvent, dayKey: string) => {
+    const startKey = getEventStartKey(event);
+    const endKey = getEventEndKey(event);
+
+    if (endKey < startKey) {
+        return startKey === dayKey;
+    }
+
+    return startKey <= dayKey && dayKey <= endKey;
+};
 
 const buildCalendarDays = (activeMonth: Date, events: CalendarEvent[]): CalendarDay[] => {
     const monthStart = getMonthStart(activeMonth);
     const monthEnd = getMonthEnd(activeMonth);
-    const calendarStart = addDays(monthStart, -((monthStart.getDay() + 6) % 7));
-    const calendarEnd = addDays(monthEnd, 6 - ((monthEnd.getDay() + 6) % 7));
+    const calendarStart = getCalendarStart(monthStart);
+    const calendarEnd = getCalendarEnd(monthEnd);
     const days: CalendarDay[] = [];
 
     for (let day = calendarStart; day <= calendarEnd; day = addDays(day, 1)) {
@@ -67,6 +105,127 @@ const buildCalendarDays = (activeMonth: Date, events: CalendarEvent[]): Calendar
     }
 
     return days;
+};
+
+const chunkCalendarWeeks = (calendarDays: CalendarDay[]) => {
+    const weeks: CalendarDay[][] = [];
+
+    for (let index = 0; index < calendarDays.length; index += 7) {
+        weeks.push(calendarDays.slice(index, index + 7));
+    }
+
+    return weeks;
+};
+
+const getEventSortValue = (event: CalendarEvent) => `${getEventStartKey(event)}-${getEventEndKey(event)}-${event.name}`;
+
+const getDayIndexFromKey = (dateKey: string) => {
+    const [year = "0", month = "1", day = "1"] = dateKey.split("-");
+
+    return Math.floor(Date.UTC(Number(year), Number(month) - 1, Number(day)) / 86_400_000);
+};
+
+const blendColor = (from: [number, number, number], to: [number, number, number], amount: number) =>
+    from.map((channel, index) => Math.round(channel + (to[index] - channel) * amount)) as [number, number, number];
+
+const formatRgb = ([red, green, blue]: [number, number, number]) => `rgb(${red}, ${green}, ${blue})`;
+
+const getDurationColor = (position: number) => {
+    if (position <= 0.5) {
+        return formatRgb(blendColor(EVENT_DURATION_START_COLOR, EVENT_DURATION_MIDDLE_COLOR, position * 2));
+    }
+
+    return formatRgb(blendColor(EVENT_DURATION_MIDDLE_COLOR, EVENT_DURATION_END_COLOR, (position - 0.5) * 2));
+};
+
+const findLastDayIndex = (days: CalendarDay[], predicate: (day: CalendarDay) => boolean) => {
+    for (let index = days.length - 1; index >= 0; index -= 1) {
+        const day = days[index];
+
+        if (day && predicate(day)) {
+            return index;
+        }
+    }
+
+    return -1;
+};
+
+const buildWeekSegments = (weekDays: CalendarDay[], events: CalendarEvent[]): CalendarEventSegment[] => {
+    const weekStartKey = weekDays[0]?.dateKey;
+    const weekEndKey = weekDays[weekDays.length - 1]?.dateKey;
+
+    if (!weekStartKey || !weekEndKey) {
+        return [];
+    }
+
+    const rowEnds: number[] = [];
+
+    return events
+        .filter((event) => getEventStartKey(event) <= weekEndKey && getEventEndKey(event) >= weekStartKey)
+        .sort((firstEvent, secondEvent) => getEventSortValue(firstEvent).localeCompare(getEventSortValue(secondEvent), "hu-HU"))
+        .map((event) => {
+            const eventStartKey = getEventStartKey(event);
+            const eventEndKey = getEventEndKey(event);
+            const startColumn = Math.max(
+                0,
+                weekDays.findIndex((day) => day.dateKey >= eventStartKey),
+            );
+            const endColumn = Math.max(startColumn, findLastDayIndex(weekDays, (day) => day.dateKey <= eventEndKey));
+            const row = rowEnds.findIndex((rowEnd) => rowEnd < startColumn);
+            const segmentRow = row === -1 ? rowEnds.length : row;
+
+            rowEnds[segmentRow] = endColumn;
+
+            return {
+                event,
+                startColumn,
+                startDateKey: weekDays[startColumn]?.dateKey ?? eventStartKey,
+                endDateKey: weekDays[endColumn]?.dateKey ?? eventEndKey,
+                span: endColumn - startColumn + 1,
+                row: segmentRow,
+                startsBeforeWeek: eventStartKey < weekStartKey,
+                endsAfterWeek: eventEndKey > weekEndKey,
+            };
+        });
+};
+
+const buildCalendarWeeks = (calendarDays: CalendarDay[], events: CalendarEvent[]): CalendarWeek[] =>
+    chunkCalendarWeeks(calendarDays).map((days) => ({
+        days,
+        segments: buildWeekSegments(days, events),
+    }));
+
+const getSegmentShapeClassName = (segment: CalendarEventSegment) => {
+    if (segment.startsBeforeWeek && segment.endsAfterWeek) {
+        return "border-x-0";
+    }
+
+    if (segment.startsBeforeWeek) {
+        return "rounded-r-md border-l-0";
+    }
+
+    if (segment.endsAfterWeek) {
+        return "rounded-l-md border-r-0";
+    }
+
+    return "rounded-md";
+};
+
+const getSegmentBackground = (segment: CalendarEventSegment) => {
+    if (!isMultiDayEvent(segment.event)) {
+        return undefined;
+    }
+
+    const eventStartIndex = getDayIndexFromKey(getEventStartKey(segment.event));
+    const eventEndIndex = getDayIndexFromKey(getEventEndKey(segment.event));
+    const segmentStartIndex = getDayIndexFromKey(segment.startDateKey);
+    const segmentEndIndex = getDayIndexFromKey(segment.endDateKey);
+    const eventSpan = Math.max(eventEndIndex - eventStartIndex, 1);
+    const startPosition = (segmentStartIndex - eventStartIndex) / eventSpan;
+    const endPosition = (segmentEndIndex - eventStartIndex) / eventSpan;
+    const middlePosition = (startPosition + endPosition) / 2;
+
+    return `linear-gradient(90deg, ${getDurationColor(startPosition)} 0%, ${getDurationColor(middlePosition)} 50%, ${getDurationColor(endPosition)} 100%)`;
 };
 
 const buildStatusChartData = (statistics: Statistics | null) => {
@@ -116,9 +275,12 @@ const DashboardPage = () => {
     const [hasError, setHasError] = useState(false);
     const [statisticsHasError, setStatisticsHasError] = useState(false);
 
-    const monthStartKey = toDateKey(getMonthStart(activeMonth));
-    const monthEndKey = toDateKey(getMonthEnd(activeMonth));
+    const monthStart = getMonthStart(activeMonth);
+    const monthEnd = getMonthEnd(activeMonth);
+    const calendarStartKey = toDateKey(getCalendarStart(monthStart));
+    const calendarEndKey = toDateKey(getCalendarEnd(monthEnd));
     const calendarDays = useMemo(() => buildCalendarDays(activeMonth, events), [activeMonth, events]);
+    const calendarWeeks = useMemo(() => buildCalendarWeeks(calendarDays, events), [calendarDays, events]);
     const statusChartData = useMemo(() => buildStatusChartData(statistics), [statistics]);
     const timelineChartData = useMemo(() => buildTimelineChartData(statistics), [statistics]);
 
@@ -129,7 +291,7 @@ const DashboardPage = () => {
             setLoading(true);
             setHasError(false);
 
-            const fetchedEvents = await getCalendarEvents(monthStartKey, monthEndKey);
+            const fetchedEvents = await getCalendarEvents(calendarStartKey, calendarEndKey);
 
             if (ignoreResponse) {
                 return;
@@ -150,7 +312,7 @@ const DashboardPage = () => {
         return () => {
             ignoreResponse = true;
         };
-    }, [monthStartKey, monthEndKey]);
+    }, [calendarStartKey, calendarEndKey]);
 
     useEffect(() => {
         let ignoreResponse = false;
@@ -246,11 +408,79 @@ const DashboardPage = () => {
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-7">
+                <div className="hidden sm:block">
+                    {calendarWeeks.map((week) => {
+                        const rowCount = Math.max(1, Math.max(...week.segments.map((segment) => segment.row + 1), 0));
+                        const weekHeight = 52 + rowCount * 30;
+
+                        return (
+                            <div
+                                key={week.days[0]?.dateKey}
+                                className="relative border-b border-[#e7ecef]"
+                                style={{ minHeight: weekHeight }}
+                            >
+                                <div className="grid grid-cols-7" style={{ minHeight: weekHeight }}>
+                                    {week.days.map((day) => (
+                                        <div
+                                            key={day.dateKey}
+                                            className={`min-h-full border-r border-[#e7ecef] p-2 ${
+                                                day.isCurrentMonth ? "bg-white" : "bg-[#f7f9fa] text-[#3e484c]/45"
+                                            }`}
+                                        >
+                                            <span
+                                                className={`flex h-7 min-w-7 w-fit items-center justify-center rounded-lg px-2 text-sm font-bold ${
+                                                    isToday(day.date) ? "bg-primary-light text-white" : "text-[#3e484c]"
+                                                }`}
+                                            >
+                                                {day.date.getDate()}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div
+                                    className="pointer-events-none absolute inset-x-0 top-10 grid grid-cols-7 gap-y-1 px-1"
+                                    style={{ gridTemplateRows: `repeat(${rowCount}, 26px)` }}
+                                >
+                                    {week.segments.map((segment) => {
+                                        const segmentBackground = getSegmentBackground(segment);
+
+                                        return (
+                                            <Link
+                                                key={`${week.days[0]?.dateKey}-${segment.event.id}-${segment.startColumn}`}
+                                                to={`/datasheet/${segment.event.id}`}
+                                                className={`pointer-events-auto relative flex min-w-0 items-center gap-1.5 border px-2 text-left text-xs font-bold text-[#3e484c] transition hover:brightness-95 ${
+                                                    segmentBackground
+                                                        ? "border-white/70 shadow-sm"
+                                                        : "border-primary-light/30 hover:border-primary-light bg-[#edf8fb] hover:bg-[#e2f3f7]"
+                                                } ${getSegmentShapeClassName(segment)}`}
+                                                style={{
+                                                    gridColumn: `${segment.startColumn + 1} / span ${segment.span}`,
+                                                    gridRow: segment.row + 1,
+                                                    background: segmentBackground,
+                                                }}
+                                                title={segment.event.name}
+                                            >
+                                                {segment.startsBeforeWeek && <span className="flex-shrink-0 text-[#3e484c]/65">&lsaquo;</span>}
+                                                <span className="truncate">{segment.event.name}</span>
+                                                {segment.endsAfterWeek && <span className="ml-auto flex-shrink-0 text-[#3e484c]/65">&rsaquo;</span>}
+                                                {segment.event.unSeen && (
+                                                    <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-500" />
+                                                )}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="grid grid-cols-1 sm:hidden">
                     {calendarDays.map((day) => (
                         <div
                             key={day.dateKey}
-                            className={`min-h-[108px] border-b border-[#e7ecef] p-2 sm:border-r ${
+                            className={`min-h-[108px] border-b border-[#e7ecef] p-2 ${
                                 day.isCurrentMonth ? "bg-white" : "bg-[#f7f9fa] text-[#3e484c]/45"
                             }`}
                         >
@@ -262,7 +492,7 @@ const DashboardPage = () => {
                                 >
                                     {day.date.getDate()}
                                 </span>
-                                <span className="text-xs font-medium text-[#3e484c]/45 sm:hidden">{DAY_FORMATTER.format(day.date)}</span>
+                                <span className="text-xs font-medium text-[#3e484c]/45">{DAY_FORMATTER.format(day.date)}</span>
                             </div>
 
                             <div className="flex flex-col gap-1.5">
@@ -337,7 +567,7 @@ const DashboardPage = () => {
                             <PieChartIcon size={22} className="text-primary-light" />
                         </div>
 
-                        <div className="h-[280px]">
+                        <div className="h-[280px] [&_*:focus]:outline-none">
                             {statisticsLoading ? (
                                 <div className="flex h-full items-center justify-center text-sm font-medium text-[#3e484c]/60">
                                     Statisztika betöltése...
@@ -394,7 +624,7 @@ const DashboardPage = () => {
                             <BarChart3 size={22} className="text-primary-light" />
                         </div>
 
-                        <div className="h-[280px]">
+                        <div className="h-[280px] [&_*:focus]:outline-none">
                             {statisticsLoading ? (
                                 <div className="flex h-full items-center justify-center text-sm font-medium text-[#3e484c]/60">
                                     Statisztika betöltése...
