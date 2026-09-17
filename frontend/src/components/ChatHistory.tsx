@@ -37,7 +37,7 @@ const CHAT_OPTIONS: Record<ChatMode, ChatChannelOption[]> = {
         },
         {
             key: CHAT_CHANNELS.LEGAL,
-            label: "Legal",
+            label: "Jogi osztály",
             description: "Jogi osztály és szervezők",
         },
     ],
@@ -51,7 +51,7 @@ const CHAT_OPTIONS: Record<ChatMode, ChatChannelOption[]> = {
     legal: [
         {
             key: CHAT_CHANNELS.LEGAL,
-            label: "Legal",
+            label: "Jogi osztály",
             description: "Jogi osztály és szervezők",
         },
     ],
