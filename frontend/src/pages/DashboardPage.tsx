@@ -168,9 +168,12 @@ const buildWeekSegments = (weekDays: CalendarDay[], events: CalendarEvent[]): Ca
             const eventEndKey = getEventEndKey(event);
             const startColumn = Math.max(
                 0,
-                weekDays.findIndex((day) => day.dateKey >= eventStartKey),
+                weekDays.findIndex((day) => day.dateKey >= eventStartKey)
             );
-            const endColumn = Math.max(startColumn, findLastDayIndex(weekDays, (day) => day.dateKey <= eventEndKey));
+            const endColumn = Math.max(
+                startColumn,
+                findLastDayIndex(weekDays, (day) => day.dateKey <= eventEndKey)
+            );
             const row = rowEnds.findIndex((rowEnd) => rowEnd < startColumn);
             const segmentRow = row === -1 ? rowEnds.length : row;
 
@@ -358,7 +361,7 @@ const DashboardPage = () => {
 
     return (
         <div className="flex w-full flex-col gap-4">
-            <div className="flex max-w-6xl flex-col gap-3 rounded-lg bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 rounded-lg bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p className="text-sm font-semibold tracking-wide text-[#3e484c]/60 uppercase">Irányítópult</p>
                     <h1 className="text-xl font-bold text-[#3e484c] capitalize">{MONTH_FORMATTER.format(activeMonth)}</h1>
@@ -399,7 +402,7 @@ const DashboardPage = () => {
                 </div>
             )}
 
-            <div className="max-w-6xl overflow-hidden rounded-lg bg-white shadow-sm">
+            <div className="overflow-hidden rounded-lg bg-white shadow-sm">
                 <div className="grid grid-cols-7 border-b border-[#dce3e6] bg-[#f1f4f6]">
                     {WEEK_DAYS.map((dayName) => (
                         <div key={dayName} className="px-2 py-3 text-center text-xs font-bold tracking-wide text-[#3e484c]/70 uppercase">
@@ -428,7 +431,7 @@ const DashboardPage = () => {
                                             }`}
                                         >
                                             <span
-                                                className={`flex h-7 min-w-7 w-fit items-center justify-center rounded-lg px-2 text-sm font-bold ${
+                                                className={`flex h-7 w-fit min-w-7 items-center justify-center rounded-lg px-2 text-sm font-bold ${
                                                     isToday(day.date) ? "bg-primary-light text-white" : "text-[#3e484c]"
                                                 }`}
                                             >
@@ -461,9 +464,13 @@ const DashboardPage = () => {
                                                 }}
                                                 title={segment.event.name}
                                             >
-                                                {segment.startsBeforeWeek && <span className="flex-shrink-0 text-[#3e484c]/65">&lsaquo;</span>}
+                                                {segment.startsBeforeWeek && (
+                                                    <span className="flex-shrink-0 text-[#3e484c]/65">&lsaquo;</span>
+                                                )}
                                                 <span className="truncate">{segment.event.name}</span>
-                                                {segment.endsAfterWeek && <span className="ml-auto flex-shrink-0 text-[#3e484c]/65">&rsaquo;</span>}
+                                                {segment.endsAfterWeek && (
+                                                    <span className="ml-auto flex-shrink-0 text-[#3e484c]/65">&rsaquo;</span>
+                                                )}
                                                 {segment.event.unSeen && (
                                                     <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-500" />
                                                 )}
@@ -504,7 +511,9 @@ const DashboardPage = () => {
                                         title={event.name}
                                     >
                                         {event.unSeen && <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />}
-                                        <span className="line-clamp-1 pr-3 text-xs leading-snug font-bold text-[#3e484c]">{event.name}</span>
+                                        <span className="line-clamp-1 pr-3 text-xs leading-snug font-bold text-[#3e484c]">
+                                            {event.name}
+                                        </span>
                                         <span className="truncate text-[11px] leading-none font-medium text-[#3e484c]/65">
                                             {event.status}
                                         </span>
@@ -526,7 +535,7 @@ const DashboardPage = () => {
                 )}
             </div>
 
-            <div className="max-w-6xl rounded-lg bg-white p-4 shadow-sm">
+            <div className="rounded-lg bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p className="text-sm font-semibold tracking-wide text-[#3e484c]/60 uppercase">Statisztika</p>
@@ -633,8 +642,18 @@ const DashboardPage = () => {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={timelineChartData} margin={{ top: 10, right: 8, left: -18, bottom: 0 }}>
                                         <CartesianGrid stroke="#e7ecef" vertical={false} />
-                                        <XAxis dataKey="period" tick={{ fill: "#3e484c", fontSize: 12 }} tickLine={false} axisLine={false} />
-                                        <YAxis allowDecimals={false} tick={{ fill: "#3e484c", fontSize: 12 }} tickLine={false} axisLine={false} />
+                                        <XAxis
+                                            dataKey="period"
+                                            tick={{ fill: "#3e484c", fontSize: 12 }}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+                                        <YAxis
+                                            allowDecimals={false}
+                                            tick={{ fill: "#3e484c", fontSize: 12 }}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
                                         <Tooltip />
                                         <Bar dataKey="total" name="Beérkezett" fill="#50adc9" radius={[6, 6, 0, 0]} />
                                     </BarChart>

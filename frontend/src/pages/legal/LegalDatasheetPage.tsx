@@ -10,6 +10,7 @@ import { showActionError, showActionSuccess } from "../../utils/actionFeedback";
 import StatusHistory from "../../components/StatusHistory";
 import { statusChange } from "../../actions/statusChange";
 import { useRevalidator } from "react-router-dom";
+import { isLockedEventStatus } from "../../utils/eventStatus";
 
 const LegalDatasheetPage = () => {
     const { selectedEvent } = useSelector((state) => state.event);
@@ -29,6 +30,8 @@ const LegalDatasheetPage = () => {
     };
 
     const handleSaveReviewedDocuments = async (files: File[]): Promise<boolean> => {
+        if (isLockedEventStatus(selectedEvent.status)) return false;
+
         setSaving(true);
         try {
             if (files.length > 0) {
@@ -53,6 +56,8 @@ const LegalDatasheetPage = () => {
         }
     };
 
+    const isEventLocked = isLockedEventStatus(selectedEvent.status);
+
     return (
         <div className="flex w-full flex-col gap-6">
             <LegalDocumentReviewModal
@@ -69,7 +74,7 @@ const LegalDatasheetPage = () => {
                     <p className="text-sm">Esemény státusza</p>
                 </div>
                 <div className="flex w-full max-w-[608px] flex-row justify-end gap-2 max-lg:place-self-end max-sm:flex-wrap">
-                    {selectedEvent.status === "Szerződés átnézésre vár" && (
+                    {!isEventLocked && selectedEvent.status === "Szerződés átnézésre vár" && (
                         <button
                             className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
                             onClick={() => setReviewModalOpen(true)}
@@ -160,7 +165,7 @@ const LegalDatasheetPage = () => {
                             )}
                         </div>
                     </div>
-                    <ChatHistory eventData={selectedEvent} mode="legal" />
+                    <ChatHistory eventData={selectedEvent} mode="legal" readOnly={isEventLocked} />
                 </div>
             </main>
         </div>

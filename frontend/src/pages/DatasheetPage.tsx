@@ -41,6 +41,7 @@ import { useSelector } from "../redux/store";
 import { showActionError, showActionSuccess } from "../utils/actionFeedback";
 import StatusHistory from "../components/StatusHistory";
 import { useSessionUser } from "../utils/useSessionUser";
+import { isLockedEventStatus } from "../utils/eventStatus";
 
 const LEGAL_STATUS_ACTIONS: Record<string, { buttonLabel: string; route: string; successMessage: string }> = {
     "Partneri aláírásra vár": {
@@ -107,6 +108,11 @@ const DatasheetPage = () => {
     }
 
     const handleSave = async () => {
+        if (isLockedEventStatus(selectedEvent.status)) {
+            setIsEditing(false);
+            return;
+        }
+
         setIsEditing(false);
         await saveEvent(selectedEvent);
         await getEvent(selectedEvent.id);
@@ -124,6 +130,8 @@ const DatasheetPage = () => {
     };
 
     const addOrganizer = async (userId: number) => {
+        if (isLockedEventStatus(selectedEvent.status)) return;
+
         const organizersArray = selectedEvent.assigned_user.flatMap((user) => user.id);
         organizersArray.push(userId);
         await addOrganizerToEvent(organizersArray, selectedEvent.id);
@@ -131,6 +139,8 @@ const DatasheetPage = () => {
     };
 
     const removeOrganizer = async (userId: number) => {
+        if (isLockedEventStatus(selectedEvent.status)) return;
+
         const organizersArray = selectedEvent.assigned_user.flatMap((user) => user.id);
         const removedArray = organizersArray.filter((id) => id !== userId);
         await addOrganizerToEvent(removedArray, selectedEvent.id);
@@ -138,11 +148,15 @@ const DatasheetPage = () => {
     };
 
     const handleQualificationChange = async (value: boolean) => {
+        if (isLockedEventStatus(selectedEvent.status)) return;
+
         await changeQualification(selectedEvent.id, value);
         await getEvent(selectedEvent.id);
     };
 
     const handleNextStatus = async () => {
+        if (isLockedEventStatus(selectedEvent.status)) return;
+
         if (selectedEvent.status === "Beérkezett") {
             const success = await statusChange("accept-event", selectedEvent.id);
             if (!success) {
@@ -181,6 +195,7 @@ const DatasheetPage = () => {
               : null;
 
     const handleOpenOfferVersions = async () => {
+        if (isLockedEventStatus(selectedEvent.status)) return;
         if (!reviewOfferType) return;
 
         const fetchedVersions = await getOfferVersions(selectedEvent.id, reviewOfferType);
@@ -190,12 +205,16 @@ const DatasheetPage = () => {
     };
 
     const handleContractSelectionSubmit = (documentIds: number[]) => {
+        if (isLockedEventStatus(selectedEvent.status)) return;
+
         setSelectedContractDocumentIds(documentIds);
         setContractDocumentsModalOpen(false);
         setContractConfirmOpen(true);
     };
 
     const handleConfirmContractSelection = async () => {
+        if (isLockedEventStatus(selectedEvent.status)) return;
+
         setContractSelectionLoading(true);
         try {
             const success = await selectContractDocuments(selectedEvent.id, selectedContractDocumentIds);
@@ -214,6 +233,8 @@ const DatasheetPage = () => {
     };
 
     const handleRejectEvent = async () => {
+        if (isLockedEventStatus(selectedEvent.status)) return;
+
         if (rejectReason.trim().length === 0) {
             setRejectReasonError(true);
             return;
@@ -231,13 +252,15 @@ const DatasheetPage = () => {
             setRejectModalOpen(false);
             setRejectReason("");
             setRejectReasonError(false);
-            revalidator.revalidate();
+            navigate("/events", { replace: true });
         } finally {
             setRejectLoading(false);
         }
     };
 
     const handleCancelEvent = async () => {
+        if (isLockedEventStatus(selectedEvent.status)) return;
+
         if (cancelReason.trim().length === 0) {
             setCancelReasonError(true);
             return;
@@ -255,16 +278,18 @@ const DatasheetPage = () => {
             setCancelModalOpen(false);
             setCancelReason("");
             setCancelReasonError(false);
-            revalidator.revalidate();
+            navigate("/events", { replace: true });
         } finally {
             setCancelLoading(false);
         }
     };
 
     const legalStatusAction = LEGAL_STATUS_ACTIONS[selectedEvent.status] ?? null;
+    const isEventLocked = isLockedEventStatus(selectedEvent.status);
+    const isEditingAllowed = isEditing && !isEventLocked;
     const canManageEvent = Number(user.role) === ROLES.ADMIN || Number(user.role) === ROLES.ORGANIZER;
-    const canRejectEvent = canManageEvent && selectedEvent.status === "Beérkezett";
-    const canCancelEvent = canManageEvent;
+    const canRejectEvent = !isEventLocked && canManageEvent && selectedEvent.status === "Beérkezett";
+    const canCancelEvent = !isEventLocked && canManageEvent;
     const primaryActionClassName =
         "bg-primary-light flex h-10 cursor-pointer flex-row items-center justify-center gap-1 rounded-md px-4 py-2 text-sm whitespace-nowrap text-white max-sm:w-full";
 
@@ -281,6 +306,8 @@ const DatasheetPage = () => {
     };
 
     const startEditing = () => {
+        if (isEventLocked) return;
+
         setIsEditing(true);
         dispatch(SetSidebarOpen(false));
     };
@@ -357,7 +384,7 @@ const DatasheetPage = () => {
             <DownloadableDocumentsModal eventId={selectedEvent.id} open={documentsModalOpen} onClose={() => setDocumentsModalOpen(false)} />
             <Modal
                 title="Felelősök hozzáadása"
-                open={openOrganizersModal}
+                open={openOrganizersModal && !isEventLocked}
                 onCancel={() => setOpenOrganizersModal(false)}
                 cancelButtonProps={{ style: { display: "none" } }}
                 okText="Mentés"
@@ -454,7 +481,7 @@ const DatasheetPage = () => {
                     <p className="text-sm">Esemény státusza</p>
                 </div>
                 <div className="flex w-full shrink-0 flex-row items-center justify-end gap-2 self-stretch max-sm:flex-col max-sm:items-stretch md:w-auto md:self-auto">
-                    {isEditing && (
+                    {isEditingAllowed && (
                         <div className="bg-primary-light relative flex w-fit cursor-pointer items-center rounded-md p-1 select-none">
                             <div
                                 className={`absolute top-1 bottom-1 z-10 w-[calc(50%-4px)] rounded-md bg-white transition-transform duration-300 ease-in-out ${
@@ -482,41 +509,41 @@ const DatasheetPage = () => {
                             </button>
                         </div>
                     )}
-                    {isEditing && (
+                    {isEditingAllowed && (
                         <button className={primaryActionClassName} onClick={handleCancel}>
                             <X /> Mégse
                         </button>
                     )}
-                    {!isEditing && selectedEvent.status === "Árajánlat készítésre vár" && (
+                    {!isEventLocked && !isEditingAllowed && selectedEvent.status === "Árajánlat készítésre vár" && (
                         <Link to={`/assign-uni-price/${selectedEvent.id}`} className={primaryActionClassName}>
                             <DollarSign /> Árajánlat adása
                         </Link>
                     )}
-                    {!isEditing && reviewOfferType && (
+                    {!isEventLocked && !isEditingAllowed && reviewOfferType && (
                         <button className={primaryActionClassName} onClick={handleOpenOfferVersions}>
                             <Eye /> Árajánlat megtekintése
                         </button>
                     )}
-                    {!isEditing && selectedEvent.status === "Szerződéses adatokra vár" && (
+                    {!isEventLocked && !isEditingAllowed && selectedEvent.status === "Szerződéses adatokra vár" && (
                         <button className={primaryActionClassName} onClick={() => setContractDocumentsModalOpen(true)}>
                             <FileText /> Szerződések kiválasztása
                         </button>
                     )}
-                    {!isEditing && selectedEvent.status === "Beérkezett" && (
+                    {!isEventLocked && !isEditingAllowed && selectedEvent.status === "Beérkezett" && (
                         <button className={primaryActionClassName} onClick={handleNextStatus}>
                             <Check /> Elfogadás
                         </button>
                     )}
-                    {!isEditing && legalStatusAction && (
+                    {!isEventLocked && !isEditingAllowed && legalStatusAction && (
                         <button className={primaryActionClassName} onClick={handleNextStatus}>
                             <FileText /> {legalStatusAction.buttonLabel}
                         </button>
                     )}
-                    {isEditing ? (
+                    {isEditingAllowed ? (
                         <button className={primaryActionClassName} onClick={handleSave}>
                             <Save /> Mentés
                         </button>
-                    ) : (
+                    ) : !isEventLocked ? (
                         <Dropdown
                             menu={{ items: moreActionItems, onClick: handleMoreActionClick }}
                             trigger={["click"]}
@@ -530,7 +557,7 @@ const DatasheetPage = () => {
                                 Műveletek
                             </button>
                         </Dropdown>
-                    )}
+                    ) : null}
                 </div>
             </div>
 
@@ -564,7 +591,7 @@ const DatasheetPage = () => {
                                                 label={config.label}
                                                 value={selectedEvent[config.fieldKey]}
                                                 type={config.type}
-                                                isEditing={isEditing}
+                                                isEditing={isEditingAllowed}
                                                 onChange={(val) => dispatch(EditSelectedEvent({ field: config.fieldKey, value: val }))}
                                             />
                                         )
@@ -587,9 +614,11 @@ const DatasheetPage = () => {
                     <div className="flex w-full flex-col gap-8 rounded-md bg-white p-4">
                         <div className="flex w-full flex-row items-center justify-between">
                             <h3 className="text-[14px] font-semibold tracking-wide text-[#3e484c] uppercase">Felelősök</h3>
-                            <button className="cursor-pointer" onClick={() => setOpenOrganizersModal(!openOrganizersModal)}>
-                                <UserRoundPlus color="#50adc9" />
-                            </button>
+                            {!isEventLocked && (
+                                <button className="cursor-pointer" onClick={() => setOpenOrganizersModal(!openOrganizersModal)}>
+                                    <UserRoundPlus color="#50adc9" />
+                                </button>
+                            )}
                         </div>
                         <div className="flex w-full flex-col gap-4">
                             {selectedEvent.assigned_user.length > 0 ? (
@@ -613,7 +642,7 @@ const DatasheetPage = () => {
                             )}
                         </div>
                     </div>
-                    <ChatHistory eventData={selectedEvent} mode="organizer" />
+                    <ChatHistory eventData={selectedEvent} mode="organizer" readOnly={isEventLocked} />
                 </div>
             </main>
 

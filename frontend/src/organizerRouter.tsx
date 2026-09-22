@@ -10,6 +10,8 @@ import { uniPriceAssignLoader } from "./loaders/uniPriceAssignLoader";
 import OfferReviewPage from "./pages/OfferReviewPage";
 import { offerReviewPageLoader } from "./loaders/offerReviewPageLoader";
 import SettingsPage from "./pages/SettingsPage";
+import ArchivedEventsPage from "./pages/ArchivedEventsPage";
+import { archivedEventsPageLoader } from "./loaders/archivedEventsPageLoader";
 
 export const organizerRouter = [
     {
@@ -27,6 +29,12 @@ export const organizerRouter = [
                 id: "events",
                 path: "events",
                 loader: eventsPageLoader,
+            },
+            {
+                element: <ArchivedEventsPage />,
+                id: "archivedEvents",
+                path: "archived-events",
+                loader: archivedEventsPageLoader,
             },
             {
                 element: <DatasheetPage />,
