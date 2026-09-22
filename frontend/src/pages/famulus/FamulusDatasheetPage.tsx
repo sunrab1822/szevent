@@ -13,6 +13,7 @@ import { EditSelectedEvent } from "../../redux/action/events/editSelectedEvent";
 import { useSelector } from "../../redux/store";
 import StatusHistory from "../../components/StatusHistory";
 import { showActionError, showActionSuccess } from "../../utils/actionFeedback";
+import { isLockedEventStatus } from "../../utils/eventStatus";
 
 interface FamulusDatasheetPageProps {
     routePrefix?: string;
@@ -43,8 +44,11 @@ const FamulusDatasheetPage = ({ routePrefix = "" }: FamulusDatasheetPageProps) =
     };
 
     const hasFamulusOfferVersions = offerEventId === selectedEvent.id && offerType === "famulus" && versions.length > 0;
+    const isEventLocked = isLockedEventStatus(selectedEvent.status);
 
     const handleOpenOfferVersions = async () => {
+        if (isEventLocked) return;
+
         const fetchedVersions = await getOfferVersions(selectedEvent.id, "famulus");
         if (fetchedVersions !== false && fetchedVersions.length > 0) {
             setVersionsModalOpen(true);
@@ -52,6 +56,8 @@ const FamulusDatasheetPage = ({ routePrefix = "" }: FamulusDatasheetPageProps) =
     };
 
     const handleLegalTigAccept = async () => {
+        if (isEventLocked) return;
+
         const success = await statusChange("legal/TIG", selectedEvent.id);
         if (!success) {
             showActionError();
@@ -78,7 +84,7 @@ const FamulusDatasheetPage = ({ routePrefix = "" }: FamulusDatasheetPageProps) =
                     <p className="text-sm">Esemény státusza</p>
                 </div>
                 <div className="flex w-full max-w-[608px] flex-row justify-end gap-2 max-lg:place-self-end max-sm:flex-wrap">
-                    {selectedEvent.status === "UF Árajánlatra vár" && (
+                    {!isEventLocked && selectedEvent.status === "UF Árajánlatra vár" && (
                         <Link
                             to={`${routePrefix}/assign-price/${selectedEvent.id}`}
                             className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
@@ -87,7 +93,7 @@ const FamulusDatasheetPage = ({ routePrefix = "" }: FamulusDatasheetPageProps) =
                             Árajánlat adása
                         </Link>
                     )}
-                    {hasFamulusOfferVersions && (
+                    {!isEventLocked && hasFamulusOfferVersions && (
                         <button
                             className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
                             onClick={handleOpenOfferVersions}
@@ -96,7 +102,7 @@ const FamulusDatasheetPage = ({ routePrefix = "" }: FamulusDatasheetPageProps) =
                             Árajánlat megtekintése
                         </button>
                     )}
-                    {selectedEvent.status === "Megvalósult - UF igazolásra vár" && (
+                    {!isEventLocked && selectedEvent.status === "Megvalósult - UF igazolásra vár" && (
                         <button
                             className="bg-primary-light flex cursor-pointer flex-row gap-1 rounded-md px-4 py-2 text-white"
                             onClick={handleLegalTigAccept}
@@ -186,7 +192,7 @@ const FamulusDatasheetPage = ({ routePrefix = "" }: FamulusDatasheetPageProps) =
                             )}
                         </div>
                     </div>
-                    <ChatHistory eventData={selectedEvent} mode="famulus" />
+                    <ChatHistory eventData={selectedEvent} mode="famulus" readOnly={isEventLocked} />
                 </div>
             </main>
         </div>

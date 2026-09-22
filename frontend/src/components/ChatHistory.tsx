@@ -21,6 +21,7 @@ type ChatMode = "organizer" | "famulus" | "legal";
 interface ChatHistoryProps {
     eventData: Event;
     mode: ChatMode;
+    readOnly?: boolean;
 }
 
 const CHAT_OPTIONS: Record<ChatMode, ChatChannelOption[]> = {
@@ -37,7 +38,7 @@ const CHAT_OPTIONS: Record<ChatMode, ChatChannelOption[]> = {
         },
         {
             key: CHAT_CHANNELS.LEGAL,
-            label: "Legal",
+            label: "Jogi osztály",
             description: "Jogi osztály és szervezők",
         },
     ],
@@ -51,7 +52,7 @@ const CHAT_OPTIONS: Record<ChatMode, ChatChannelOption[]> = {
     legal: [
         {
             key: CHAT_CHANNELS.LEGAL,
-            label: "Legal",
+            label: "Jogi osztály",
             description: "Jogi osztály és szervezők",
         },
     ],
@@ -150,7 +151,7 @@ const renderMessageText = (message: Message) => {
     return parts;
 };
 
-const ChatHistory = ({ eventData, mode }: ChatHistoryProps) => {
+const ChatHistory = ({ eventData, mode, readOnly = false }: ChatHistoryProps) => {
     const user = useSessionUser();
     const dispatch = useDispatch();
 
@@ -273,6 +274,8 @@ const ChatHistory = ({ eventData, mode }: ChatHistoryProps) => {
     };
 
     const handleSend = async () => {
+        if (readOnly) return;
+
         const text = input.trim();
         if (!text || sending) return;
         const mentions = buildMentionsPayload(text, selectedMentions);
@@ -400,14 +403,16 @@ const ChatHistory = ({ eventData, mode }: ChatHistoryProps) => {
                                 )}
 
                                 <div
-                                    className={`flex max-w-[75%] flex-col ${isMe ? "items-end" : isLastInGroup ? "items-start" : "ml-10 items-start"}`}
+                                    className={`flex max-w-[75%] min-w-0 flex-col ${
+                                        isMe ? "items-end" : isLastInGroup ? "items-start" : "ml-10 items-start"
+                                    }`}
                                 >
                                     <Tooltip
                                         title={`${message.sender.displayName} • ${formatTime(message.created_at)}`}
                                         placement={isMe ? "left" : "right"}
                                     >
                                         <div
-                                            className={`px-4 py-2 text-sm ${
+                                            className={`break-all px-4 py-2 text-sm ${
                                                 isMe
                                                     ? "rounded-2xl rounded-br-sm bg-[#50adc9] text-white"
                                                     : "rounded-2xl rounded-bl-sm bg-gray-100 text-gray-800"
@@ -433,7 +438,8 @@ const ChatHistory = ({ eventData, mode }: ChatHistoryProps) => {
                 )}
             </div>
 
-            <div className="relative mt-2 flex w-full items-center">
+            {!readOnly && (
+                <div className="relative mt-2 flex w-full items-center">
                 {mentionPanelOpen && (
                     <div className="absolute right-0 bottom-12 left-0 z-10 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white p-1 shadow-lg">
                         {mentionSuggestions.length > 0 ? (
@@ -488,7 +494,8 @@ const ChatHistory = ({ eventData, mode }: ChatHistoryProps) => {
                 >
                     <SendHorizontal size={18} />
                 </button>
-            </div>
+                </div>
+            )}
         </div>
     );
 };

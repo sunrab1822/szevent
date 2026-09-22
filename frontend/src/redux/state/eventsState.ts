@@ -5,5 +5,6 @@ export interface EventsState {
     offerEvents: Event[] | [];
     inProgressEvents: Event[] | [];
     settlementEvents: Event[] | [];
+    archivedEvents: Event[] | [];
     selectedEvent: Event | null;
 }

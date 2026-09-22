@@ -28,6 +28,7 @@ Route::get('/me', [UserController::class, 'me']);
 Route::post('/create-event', [EventController::class, 'create']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/events', [StatusController::class, 'get_events_by_status']);
+    Route::get('/archived-events', [StatusController::class, 'get_archived_events']);
     Route::get('/statistics', [StatusController::class, 'get_statistics']);
 });
 
@@ -66,7 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/legal/reviewe', [EventController::class, 'contract_reviewe']);
     Route::post('/legal/accept-client', [EventController::class, 'contract_accept_by_client']); // Ügyfél által elfogadva
     Route::post('/legal/accept-uni', [EventController::class, 'contract_accept_by_uni']); // Egyetem által elfogadva
-    Route::post('/legal/signed', [EventController::class, 'contract_signed']); // Szerződés aláírva
+    Route::post('/legal/signed', [EventController::class, 'contract_signed']); // Szerződés kész
     Route::post('/legal/completed', [EventController::class, 'event_completed']); // EZ átrakja az UF igazolásra vár, látszik a gomb, hogy UF Igazolás elfogadva, ez hívja a TIG-et.
     Route::post('/legal/TIG', [EventController::class, 'contract_TIG']); //
     Route::post('/legal/informantwaiting', [EventController::class, 'adatkozlofelkuld']);

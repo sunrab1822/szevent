@@ -1,13 +1,27 @@
 import { SetEvents } from "../redux/action/events/setEvents";
 import { store } from "../redux/store";
 
-export const getEvents = async (): Promise<boolean> => {
-    const response = await fetch(`${import.meta.env.VITE_API_ORIGIN}/api/events`, {
+interface GetEventsParams {
+    search?: string;
+    signal?: AbortSignal;
+}
+
+export const getEvents = async ({ search, signal }: GetEventsParams = {}): Promise<boolean> => {
+    const searchParams = new URLSearchParams();
+    const trimmedSearch = search?.trim();
+
+    if (trimmedSearch) {
+        searchParams.set("search", trimmedSearch);
+    }
+
+    const queryString = searchParams.toString();
+    const response = await fetch(`${import.meta.env.VITE_API_ORIGIN}/api/events${queryString ? `?${queryString}` : ""}`, {
         headers: {
             Authorization: `Bearer ${localStorage.getItem(`${import.meta.env.VITE_AUTH_TOKEN}`)}`,
             "Content-Type": "application/json",
         },
         method: "GET",
+        signal,
     });
 
     if (!response.ok) {
