@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -99,6 +100,31 @@ class Event extends Model
         'expectedDustSmokeVapor' => 'array',
 
     ];
+
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        $term = trim((string) $term);
+
+        if ($term === '') {
+            return $query;
+        }
+
+        $term = addcslashes($term, '%_\\');
+
+        return $query->where(function (Builder $q) use ($term) {
+            $q->where('name', 'like', "%{$term}%")
+                ->orWhere('description', 'like', "%{$term}%")
+                ->orWhere('location', 'like', "%{$term}%")
+                ->orWhere('address', 'like', "%{$term}%")
+                ->orWhere('type', 'like', "%{$term}%")
+                ->orWhere('nature', 'like', "%{$term}%")
+                ->orWhere('organizerFullName', 'like', "%{$term}%")
+                ->orWhere('organizerEmail', 'like', "%{$term}%")
+                ->orWhere('secondOrganizerFullName', 'like', "%{$term}%")
+                ->orWhere('customerWithLegalBackgroundName', 'like', "%{$term}%")
+                ->orWhere('registrationNumber', 'like', "%{$term}%");
+        });
+    }
 
     /**
      * Get all of the statusChanges for the Event

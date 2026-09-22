@@ -14,10 +14,11 @@ class StatusController extends Controller
     public function get_events_by_status(Request $req)
 {
     $userId = Auth::id();
+    $search = $req->query('search');
 
     $stats = [
-        'submitted' => Event::where('status', Status::BEERKEZETT)->with('assignedUser')->get()->values(),
-        'offer' => Event::whereIn('status', [
+        'submitted' => Event::search($search)->where('status', Status::BEERKEZETT)->with('assignedUser')->get()->values(),
+        'offer' => Event::search($search)->whereIn('status', [
             Status::UF_ARAJANLATRA_VAR,
             Status::UF_ARAJANLAT_ELFOGADASRA_VAR,
             Status::KOLI_ARAJANLATRA_VAR,
@@ -25,7 +26,7 @@ class StatusController extends Controller
             Status::ARAJANLTAN_KESZITESRE_VAR,
             Status::ARAJANLAT_ELFOGADASRA_VAR,
         ])->with('assignedUser')->get()->values(),
-        'inProgress' => Event::whereIn('status', [
+        'inProgress' => Event::search($search)->whereIn('status', [
             Status::SZERZODESES_ADATOKRA_VAR,
             Status::SZERZODES_ATTNEZESRE_VAR,
             Status::PARTNERI_ALAIRASRA_VAR,
@@ -37,7 +38,7 @@ class StatusController extends Controller
             Status::ADATKOZLO_FELKULDESERE_VAR,
             Status::ADATKOZLO_FELKULDVE,
         ])->with('assignedUser')->get()->values(),
-        'settlement' => Event::whereIn('status', [
+        'settlement' => Event::search($search)->whereIn('status', [
             Status::MEGVALOSULT_UF_IGAZOLASRA_VAR,
             Status::TIG_JOVAHAGYASRA_VAR,
             Status::ADATKOZLO_FELKULDESERE_VAR,
@@ -70,6 +71,23 @@ class StatusController extends Controller
     }
 
     return response()->json($stats);
+}
+
+public function get_archived_events(Request $req)
+{
+    $events = Event::withTrashed()
+        ->search($req->query('search'))
+        ->whereIn('status', [
+            Status::RENDEZVENY_LEZARVA,
+            Status::LEMONDVA,
+            Status::ELUTASITVA,
+        ])
+        ->with('assignedUser')
+        ->orderByDesc('updated_at')
+        ->get()
+        ->values();
+
+    return response()->json($events);
 }
 
 public function get_statistics(Request $req)

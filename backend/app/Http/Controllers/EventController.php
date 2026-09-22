@@ -69,7 +69,7 @@ class EventController extends Controller
 
     public function show_one(Request $req)
     {
-        $event = Event::where('id', $req->id)->with('statusChanges', 'assignedUser')->get();
+        $event = Event::withTrashed()->where('id', $req->id)->with('statusChanges', 'assignedUser')->get();
 
         $assignuser = AssignUser::where('users_id', Auth::id())
             ->where('events_id', $req->id)
@@ -270,7 +270,7 @@ class EventController extends Controller
         }
         $previousStatus = $event->status;
         $event->status = Status::ELUTASITVA;
-        $event->rejectReason = $req->rejectReason;
+        $event->rejectReason = $req->reason;
 
         $event->save();
         StatusChangeLogController::log($previousStatus, $event->status, $event->id, Auth::id(), $event->rejectReason);
@@ -292,18 +292,18 @@ class EventController extends Controller
         $event = Event::findOrFail($req->id);
         $previousStatus = $event->status;
         $event->status = Status::LEMONDVA;
-        $event->rejectReason = $req->rejectReason;
+        $event->rejectReason = $req->reason;
 
         $event->save();
         StatusChangeLogController::log($previousStatus, $event->status, $event->id, Auth::id(), $event->rejectReason);
         $event->delete();
 
-        Mail::to($event->organizerEmail)->send(new RejectMail(
-            $event->organizerName,
-            $event->name,
-            $event->rejectReason ?? '-',
-            'Tájékoztatjuk, hogy a rendezvény lemondásra került.'
-        ));
+        // Mail::to($event->organizerEmail)->send(new RejectMail(
+        //     $event->organizerName,
+        //     $event->name,
+        //     $event->rejectReason ?? '-',
+        //     'Tájékoztatjuk, hogy a rendezvény lemondásra került.'
+        // ));
 
         return response()->json();
     }
@@ -442,7 +442,7 @@ class EventController extends Controller
 
         $previousStatus = $event->status;
         $event->status = Status::KOLI_ARAJANLATRA_VAR;
-        $event->rejectReason = $req->rejectReason;
+        $event->rejectReason = $req->reason;
         $event->save();
 
         $currentVersion = Version::where('events_id', $event->id)
@@ -451,7 +451,7 @@ class EventController extends Controller
             ->first();
 
         if ($currentVersion) {
-            $currentVersion->update(['reason' => $req->rejectReason]);
+            $currentVersion->update(['reason' => $req->reason]);
         }
 
         StatusChangeLogController::log($previousStatus, $event->status, $event->id, Auth::id(), $req->reason);
@@ -753,7 +753,7 @@ class EventController extends Controller
             ->orderBy('version')
             ->get()
             ->map(function ($version) {
-                $version->summary_url = '/api/version/'.$version->id.'/offer-summary';
+                $version->summary_url = '/api/version/' . $version->id . '/offer-summary';
 
                 return $version;
             });
@@ -807,7 +807,7 @@ class EventController extends Controller
             ->flip();
 
         return response()->json([
-            'events' => $events->map(fn ($event) => [
+            'events' => $events->map(fn($event) => [
                 'id' => $event->id,
                 'name' => $event->name,
                 'startDate' => Carbon::parse($event->startDate)->format('Y-m-d'),
