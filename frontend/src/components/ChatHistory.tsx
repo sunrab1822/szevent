@@ -37,7 +37,7 @@ const CHAT_OPTIONS: Record<ChatMode, ChatChannelOption[]> = {
         },
         {
             key: CHAT_CHANNELS.LEGAL,
-            label: "Legal",
+            label: "Jogi osztály",
             description: "Jogi osztály és szervezők",
         },
     ],
@@ -51,7 +51,7 @@ const CHAT_OPTIONS: Record<ChatMode, ChatChannelOption[]> = {
     legal: [
         {
             key: CHAT_CHANNELS.LEGAL,
-            label: "Legal",
+            label: "Jogi osztály",
             description: "Jogi osztály és szervezők",
         },
     ],
@@ -400,14 +400,16 @@ const ChatHistory = ({ eventData, mode }: ChatHistoryProps) => {
                                 )}
 
                                 <div
-                                    className={`flex max-w-[75%] flex-col ${isMe ? "items-end" : isLastInGroup ? "items-start" : "ml-10 items-start"}`}
+                                    className={`flex max-w-[75%] min-w-0 flex-col ${
+                                        isMe ? "items-end" : isLastInGroup ? "items-start" : "ml-10 items-start"
+                                    }`}
                                 >
                                     <Tooltip
                                         title={`${message.sender.displayName} • ${formatTime(message.created_at)}`}
                                         placement={isMe ? "left" : "right"}
                                     >
                                         <div
-                                            className={`px-4 py-2 text-sm ${
+                                            className={`break-all px-4 py-2 text-sm ${
                                                 isMe
                                                     ? "rounded-2xl rounded-br-sm bg-[#50adc9] text-white"
                                                     : "rounded-2xl rounded-bl-sm bg-gray-100 text-gray-800"

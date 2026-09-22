@@ -464,7 +464,6 @@ const EventFormPage: React.FC = () => {
         defaultValues: { ...DEFAULT_VALUES, ...getSavedValues() } as EventFormInputValues,
         mode: "onChange",
     });
-    console.log("form errors:", errors);
 
     const watched = watch();
 
@@ -529,7 +528,6 @@ const EventFormPage: React.FC = () => {
             else if (Array.isArray(val)) fd.append(key, JSON.stringify(val));
             else if (val !== undefined && val !== null) fd.append(key, String(val));
         });
-        console.log(fileList);
         if (fileList[0]) fd.append("filePath", fileList[0]);
         return fd;
     };
@@ -539,7 +537,6 @@ const EventFormPage: React.FC = () => {
         setServerErrors([]);
 
         const fd = buildFormData(data);
-        console.log(fd);
 
         try {
             const res = await sendEventForm(fd);

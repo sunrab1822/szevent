@@ -8,6 +8,9 @@ import { SetSidebarOpen } from "../redux/action/globalProps/setSidebarOpen";
 import { useNavigate } from "react-router-dom";
 import { formatTime } from "../utils/formatTime";
 import { authenticate } from "../actions/authenticate";
+import { readAllNotifications } from "../actions/readAllNotifications";
+
+const VISIBLE_NOTIFICATION_LIMIT = 20;
 
 const NavBar = () => {
     const user = useSessionUser();
@@ -15,8 +18,11 @@ const NavBar = () => {
     const navigate = useNavigate();
     const { sidebarOpen } = useSelector((state) => state.globalProps);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [readAllLoading, setReadAllLoading] = useState(false);
     const notificationsRef = useRef<HTMLDivElement | null>(null);
     const notifications = useMemo(() => user.notifications ?? [], [user.notifications]);
+    const visibleNotifications = useMemo(() => notifications.slice(0, VISIBLE_NOTIFICATION_LIMIT), [notifications]);
+    const hiddenNotificationsCount = Math.max(notifications.length - visibleNotifications.length, 0);
     const hasUnreadNotifications = notifications.some((notification) => !notification.read_at);
 
     const handleLogout = async () => {
@@ -26,6 +32,18 @@ const NavBar = () => {
     const handleNotificationClick = (eventId: number) => {
         setNotificationsOpen(false);
         navigate(`/datasheet/${eventId}`);
+    };
+
+    const handleReadAllNotifications = async () => {
+        if (readAllLoading || !hasUnreadNotifications) return;
+
+        setReadAllLoading(true);
+        const success = await readAllNotifications();
+        setReadAllLoading(false);
+
+        if (success) {
+            setNotificationsOpen(false);
+        }
     };
 
     useEffect(() => {
@@ -66,14 +84,14 @@ const NavBar = () => {
     }, []);
 
     return (
-        <div className="flex h-[80px] flex-row items-center justify-between px-5 py-3">
+        <div className="flex min-h-[64px] w-full min-w-0 flex-row items-center justify-between gap-2 px-3 py-2 mobile:min-h-[80px] mobile:px-5 mobile:py-3">
             {/* LEFT SIDE */}
-            <div className="flex flex-row items-center gap-4">
-                <div className="flex flex-row items-center gap-4">
-                    <img src="/sze_logo_landscape.png" alt="Sze logó" className="aspect-[3/1] max-w-[150px]" />
+            <div className="flex min-w-0 flex-row items-center gap-1 mobile:gap-4">
+                <div className="flex min-w-0 flex-row items-center gap-4">
+                    <img src="/sze_logo_landscape.png" alt="Sze logó" className="aspect-[3/1] w-[92px] flex-shrink-0 mobile:w-[150px]" />
                 </div>
                 <button
-                    className="z-50 flex h-8 w-8 cursor-pointer flex-col items-center justify-center gap-1"
+                    className="z-50 flex h-10 w-10 flex-shrink-0 cursor-pointer flex-col items-center justify-center gap-1"
                     onClick={() => dispatch(SetSidebarOpen(!sidebarOpen))}
                     aria-label={sidebarOpen ? "Menü zárása" : "Menü nyitása"}
                 >
@@ -82,7 +100,7 @@ const NavBar = () => {
                     <span className="bg-dark block h-0.5 w-6 translate-y-0.5 rounded-lg transition-all duration-300 ease-out" />
                 </button>
                 <button
-                    className="text-dark flex h-8 w-8 cursor-pointer items-center justify-center"
+                    className="text-dark flex h-10 w-10 flex-shrink-0 cursor-pointer items-center justify-center"
                     onClick={() => navigate(-1)}
                     aria-label="Vissza az előző oldalra"
                 >
@@ -91,7 +109,7 @@ const NavBar = () => {
             </div>
             <h1 className="tablet:block hidden text-[17px] font-semibold">Egyetemi Rendezvényadminisztrációs Platform</h1>
             {/* RIGHT SIDE */}
-            <div className="flex flex-row items-center gap-4">
+            <div className="flex min-w-0 flex-row items-center justify-end gap-1 mobile:gap-3 tablet:gap-4">
                 <div className="relative" ref={notificationsRef}>
                     <button
                         className="text-dark hover:text-primary-light relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full transition-colors"
@@ -109,14 +127,14 @@ const NavBar = () => {
                     </button>
 
                     {notificationsOpen && (
-                        <div className="absolute top-12 right-0 z-50 w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-lg border border-[#3e484c]/10 bg-white shadow-[0_16px_40px_rgba(62,72,76,0.14)]">
+                        <div className="fixed top-[58px] right-3 left-3 z-50 overflow-hidden rounded-lg border border-[#3e484c]/10 bg-white shadow-[0_16px_40px_rgba(62,72,76,0.14)] mobile:absolute mobile:top-12 mobile:right-0 mobile:left-auto mobile:w-[min(360px,calc(100vw-32px))]">
                             <div className="border-b border-[#3e484c]/10 px-4 py-3">
                                 <h2 className="text-dark text-sm leading-[100%] font-semibold">Értesítések</h2>
                             </div>
 
                             {notifications.length > 0 ? (
                                 <div className="max-h-[360px] overflow-y-auto">
-                                    {notifications.map((notification) => (
+                                    {visibleNotifications.map((notification) => (
                                         <button
                                             key={notification.id}
                                             className="flex w-full cursor-pointer flex-row gap-3 border-b border-[#3e484c]/10 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#3e484c]/5"
@@ -134,21 +152,41 @@ const NavBar = () => {
                                             </span>
                                         </button>
                                     ))}
+                                    {hiddenNotificationsCount > 0 && (
+                                        <div className="border-t border-[#3e484c]/10 px-4 py-3 text-center text-xs text-[#3e484c]/55">
+                                            További {hiddenNotificationsCount} értesítés nem jelenik meg.
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="px-4 py-6 text-center text-sm text-[#3e484c]/55">Nincs új értesítés.</div>
                             )}
+
+                            <div className="border-t border-[#3e484c]/10 bg-white px-4 py-3">
+                                <button
+                                    className="bg-primary-light flex w-full cursor-pointer items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:bg-[#3e484c]/20 disabled:text-[#3e484c]/45"
+                                    onClick={handleReadAllNotifications}
+                                    disabled={!hasUnreadNotifications || readAllLoading}
+                                >
+                                    {readAllLoading ? "Elfogadás..." : "Összes elfogadása"}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
-                <div className="flex flex-row items-center gap-2">
-                    <img src={user.picture} alt="Picture" className="h-10 w-10 flex-shrink-0 rounded-full object-cover" />
-                    <div className="flex flex-col gap-1">
-                        <h2 className="leading-[100%] font-medium">{user.name}</h2>
-                        <p className="leading-[100%]">{user.roleName}</p>
+                <div className="flex min-w-0 flex-row items-center gap-2">
+                    <img src={user.picture} alt="Picture" className="h-9 w-9 flex-shrink-0 rounded-full object-cover mobile:h-10 mobile:w-10" />
+                    <div className="hidden min-w-0 max-w-[220px] flex-col gap-1 tablet:flex">
+                        <h2 className="truncate leading-[100%] font-medium">{user.name}</h2>
+                        <p className="truncate leading-[100%]">{user.roleName}</p>
                     </div>
                 </div>
-                <button className="text-primary-light flex cursor-pointer flex-row items-center gap-2" onClick={handleLogout}>
+                <button
+                    className="text-primary-light flex h-10 w-10 flex-shrink-0 cursor-pointer flex-row items-center justify-center gap-2 rounded-full transition-colors hover:bg-[#3e484c]/5 mobile:w-auto mobile:rounded-none mobile:px-0"
+                    onClick={handleLogout}
+                    aria-label="Kijelentkezés"
+                    title="Kijelentkezés"
+                >
                     <span className="mobile:block hidden">Kijelentkezés</span>
                     <LogOut className="mobile:w-4 w-6" />
                 </button>
