@@ -111,7 +111,7 @@ class DocumentController extends Controller
 
     public function get_all_documents(string $eventId)
     {
-        $event = Event::with('assignedUser')->find($eventId);
+        $event = Event::withTrashed()->with('assignedUser')->find($eventId);
 
         if (! $event) {
             return response()->json(['message' => 'event not found!'], 404);
@@ -207,7 +207,8 @@ class DocumentController extends Controller
 
     public function generate_docx(string $eventId, string $type)
     {
-        $event = Event::with(['assignedUser', 'famulusoffers', 'unioffers'])
+        $event = Event::withTrashed()
+            ->with(['assignedUser', 'famulusoffers', 'unioffers'])
             ->where('id', $eventId)->first();
         $doc = DocTemplate::where('id', $type)->first();
 
@@ -304,7 +305,7 @@ class DocumentController extends Controller
 
     public function generateEngedely(string $eventId)
     {
-        $event = Event::where('id', $eventId)->first();
+        $event = Event::withTrashed()->where('id', $eventId)->first();
 
         $templatePath = storage_path('app/public/templates/rendezvenyi_engedely_template.docx');
         $templateProcessor = new TemplateProcessor($templatePath);
@@ -427,7 +428,7 @@ class DocumentController extends Controller
 
     public function generateOfferSummary(string $eventId)
     {
-        $event = Event::find($eventId);
+        $event = Event::withTrashed()->find($eventId);
 
         if (! $event) {
             return response()->json(['message' => 'event not found!'], 404);
@@ -555,7 +556,7 @@ class DocumentController extends Controller
             return response()->json(['message' => 'version not found!'], 404);
         }
 
-        $event = Event::find($version->events_id);
+        $event = Event::withTrashed()->find($version->events_id);
 
         if (! $event) {
             return response()->json(['message' => 'event not found!'], 404);

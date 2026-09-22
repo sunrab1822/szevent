@@ -20,7 +20,7 @@ enum Status: string
     case PARTNERI_ALAIRASRA_VAR = "Partneri aláírásra vár";
     case EGYETEMI_ALAIRASRA_VAR = "Egyetemi aláírásra vár";
     case SZERZODES_KIKULDESRE_VAR = "Szerződés kiküldésre vár";
-    case SZERZODES_ALAIRVA = "Szerződés aláírva";
+    case SZERZODES_ALAIRVA = "Szerződés kész";
     case TIG_JOVAHAGYASRA_VAR = "TIG jóváhagyásra vár";
     case MEGVALOSULT_UF_IGAZOLASRA_VAR = "Megvalósult - UF igazolásra vár"; // famulus
     case ADATKOZLO_FELKULDESERE_VAR = "Adatközlő felküldésére vár";
