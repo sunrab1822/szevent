@@ -3,12 +3,14 @@ import { SetEvents } from "../action/events/setEvents";
 import type { EventsState } from "../state/eventsState";
 import { SetSelectedEvent } from "../action/events/setSelectedEvent";
 import { EditSelectedEvent } from "../action/events/editSelectedEvent";
+import { SetArchivedEvents } from "../action/events/setArchivedEvents";
 
 const initialState: EventsState = {
     submittedEvents: [],
     offerEvents: [],
     inProgressEvents: [],
     settlementEvents: [],
+    archivedEvents: [],
     selectedEvent: null,
 };
 
@@ -27,6 +29,10 @@ export const eventsReducer = createReducer(initialState, (builder) => {
 
     builder.addCase(SetSelectedEvent, (state, action) => {
         state.selectedEvent = action.payload.selectedEvent;
+    });
+
+    builder.addCase(SetArchivedEvents, (state, action) => {
+        state.archivedEvents = action.payload.events;
     });
 
     builder.addCase(EditSelectedEvent, (state, action) => {

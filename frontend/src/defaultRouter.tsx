@@ -27,6 +27,8 @@ import FamulusPriceAssignPage from "./pages/famulus/FamulusPriceAssignPage";
 import { famulusPriceAssignLoader } from "./loaders/famulusPriceAssignLoader";
 import LegalEventsPage from "./pages/legal/LegalEventsPage";
 import LegalDatasheetPage from "./pages/legal/LegalDatasheetPage";
+import ArchivedEventsPage from "./pages/ArchivedEventsPage";
+import { archivedEventsPageLoader } from "./loaders/archivedEventsPageLoader";
 
 export const defaultRouter = [
     {
@@ -44,6 +46,12 @@ export const defaultRouter = [
                 id: "events",
                 path: "events",
                 loader: eventsPageLoader,
+            },
+            {
+                element: <ArchivedEventsPage />,
+                id: "archivedEvents",
+                path: "archived-events",
+                loader: archivedEventsPageLoader,
             },
             {
                 element: <DatasheetPage />,

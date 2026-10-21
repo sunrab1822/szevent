@@ -1,4 +1,4 @@
-import { CalendarIcon, DollarSign, File, LayoutDashboardIcon, SettingsIcon, ShieldCheck } from "lucide-react";
+import { Archive, CalendarIcon, DollarSign, File, LayoutDashboardIcon, SettingsIcon, ShieldCheck } from "lucide-react";
 import { useSessionUser } from "../utils/useSessionUser";
 import { Link, useLocation } from "react-router-dom";
 import type { JSX } from "react";
@@ -30,6 +30,11 @@ const SideBar = ({ sidebarOpen }: SideBarProps) => {
                 name: "Rendezvények",
                 path: "/events",
                 icon: <CalendarIcon />,
+            },
+            {
+                name: "Archív rendezvények",
+                path: "/archived-events",
+                icon: <Archive />,
             },
             {
                 name: "Famulus események",
@@ -83,6 +88,11 @@ const SideBar = ({ sidebarOpen }: SideBarProps) => {
                 name: "Rendezvények",
                 path: "/events",
                 icon: <CalendarIcon />,
+            },
+            {
+                name: "Archív rendezvények",
+                path: "/archived-events",
+                icon: <Archive />,
             },
             {
                 name: "Beállítások",

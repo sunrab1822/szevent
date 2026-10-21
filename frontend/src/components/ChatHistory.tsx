@@ -21,6 +21,7 @@ type ChatMode = "organizer" | "famulus" | "legal";
 interface ChatHistoryProps {
     eventData: Event;
     mode: ChatMode;
+    readOnly?: boolean;
 }
 
 const CHAT_OPTIONS: Record<ChatMode, ChatChannelOption[]> = {
@@ -150,7 +151,7 @@ const renderMessageText = (message: Message) => {
     return parts;
 };
 
-const ChatHistory = ({ eventData, mode }: ChatHistoryProps) => {
+const ChatHistory = ({ eventData, mode, readOnly = false }: ChatHistoryProps) => {
     const user = useSessionUser();
     const dispatch = useDispatch();
 
@@ -273,6 +274,8 @@ const ChatHistory = ({ eventData, mode }: ChatHistoryProps) => {
     };
 
     const handleSend = async () => {
+        if (readOnly) return;
+
         const text = input.trim();
         if (!text || sending) return;
         const mentions = buildMentionsPayload(text, selectedMentions);
@@ -435,7 +438,8 @@ const ChatHistory = ({ eventData, mode }: ChatHistoryProps) => {
                 )}
             </div>
 
-            <div className="relative mt-2 flex w-full items-center">
+            {!readOnly && (
+                <div className="relative mt-2 flex w-full items-center">
                 {mentionPanelOpen && (
                     <div className="absolute right-0 bottom-12 left-0 z-10 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white p-1 shadow-lg">
                         {mentionSuggestions.length > 0 ? (
@@ -490,7 +494,8 @@ const ChatHistory = ({ eventData, mode }: ChatHistoryProps) => {
                 >
                     <SendHorizontal size={18} />
                 </button>
-            </div>
+                </div>
+            )}
         </div>
     );
 };
