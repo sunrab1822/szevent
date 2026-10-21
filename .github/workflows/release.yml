@@ -63,6 +63,8 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
+          pull: true
+          no-cache: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.ref_name }}
 
       - name: Build and push Backend
