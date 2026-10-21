@@ -71,6 +71,8 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
+          pull: true
+          no-cache: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.ref_name }}
 
   update_deploy_branch:
