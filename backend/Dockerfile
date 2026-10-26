@@ -37,6 +37,8 @@ RUN composer install \
 
 COPY . .
 
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+
 # RUN php artisan package:discover --ansi
 
 

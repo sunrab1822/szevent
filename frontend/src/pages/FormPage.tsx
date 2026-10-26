@@ -528,7 +528,7 @@ const EventFormPage: React.FC = () => {
             else if (Array.isArray(val)) fd.append(key, JSON.stringify(val));
             else if (val !== undefined && val !== null) fd.append(key, String(val));
         });
-        if (fileList[0]) fd.append("filePath", fileList[0]);
+        if (fileList[0]) fd.append("file", fileList[0]);
         return fd;
     };
 
