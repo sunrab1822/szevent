@@ -170,11 +170,18 @@ class DocumentController extends Controller
             ]);
         }
 
-        if (Storage::disk('public')->exists('templates/rendezvenyi_engedely_template.docx')) {
+        $engedelyTemplate = DocTemplate::where('type', DocTemplateType::RENDEZVENYI_ENGEDELY->value)
+            ->orderByDesc('id')
+            ->first();
+
+        $engedelyTemplateExists = $engedelyTemplate
+            && Storage::disk('public')->exists(str_replace('storage/', '', $engedelyTemplate->path));
+
+        if ($engedelyTemplateExists || Storage::disk('public')->exists('templates/rendezvenyi_engedely_template.docx')) {
             $documents->push([
                 'key' => 'engedely',
                 'category' => 'generated',
-                'label' => 'Rendezvényi engedélyeztető',
+                'label' => $engedelyTemplateExists ? $engedelyTemplate->name : 'Rendezvényi engedélyeztető',
                 'filename' => null,
                 'url' => '/api/engedelyezes/'.$event->id,
                 'size' => null,
@@ -401,7 +408,22 @@ class DocumentController extends Controller
     {
         $event = Event::withTrashed()->where('id', $eventId)->first();
 
-        $templatePath = storage_path('app/public/templates/rendezvenyi_engedely_template.docx');
+        if (! $event) {
+            return response()->json(['message' => 'event not found!'], 404);
+        }
+
+        $engedelyTemplate = DocTemplate::where('type', DocTemplateType::RENDEZVENYI_ENGEDELY->value)
+            ->orderByDesc('id')
+            ->first();
+
+        $templatePath = $engedelyTemplate
+            ? storage_path('app/public'.str_replace('/storage', '', $engedelyTemplate->path))
+            : storage_path('app/public/templates/rendezvenyi_engedely_template.docx');
+
+        if (! file_exists($templatePath)) {
+            return response()->json(['message' => 'template not found!'], 404);
+        }
+
         $templateProcessor = new TemplateProcessor($templatePath);
 
         $idotartam = str_replace('-', '.', $event->startDate)

@@ -5,4 +5,5 @@ export const DOCTYPES = {
     Egyeb: 4,
     Adatkozlo: 5,
     AtlathatosagiNyilatkozat: 6,
+    RendezvenyiEngedely: 7,
 } as const;
