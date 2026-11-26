@@ -156,6 +156,6 @@ class Event extends Model
      */
     public function unioffers(): HasMany
     {
-        return $this->hasMany(unioffers::class, 'events_id', 'id');
+        return $this->hasMany(UniOffers::class, 'events_id', 'id');
     }
 }
