@@ -85,12 +85,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/downloadable-documents/{eventId}', [DocumentController::class, 'get_all_documents']);
     Route::get('/engedelyezes/{eventId}', [DocumentController::class, 'generateEngedely']);
     Route::get('/offer-summary/{eventId}', [DocumentController::class, 'generateOfferSummary']);
+    Route::get('/generate-docx/{eventId}/{type}', [DocumentController::class, 'generate_docx']);
 });
-
-// docx
-
-// Route::get('/generate-docx/{event}', [DocumentController::class, 'generate_docx']);
-Route::get('/generate-docx/{eventId}/{type}', [DocumentController::class, 'generate_docx']);
 
 // FamulusPrice
 Route::middleware('auth:sanctum')->group(function () {

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DocTemplateType;
+use App\Enums\Status;
 use App\Models\DocTemplate;
 use App\Models\Document;
 use App\Models\DormOffers;
@@ -10,6 +12,7 @@ use App\Models\NeededDoc;
 use App\Models\Version;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\TemplateProcessor;
@@ -150,8 +153,6 @@ class DocumentController extends Controller
             NeededDoc::where('events_id', $event->id)->pluck('doc_templates_id')->unique()
         )->get();
 
-        $hasAssignedUser = $event->assignedUser->isNotEmpty();
-
         foreach ($neededTemplates as $template) {
             $cleanPath = str_replace('storage/', '', $template->path);
 
@@ -160,24 +161,13 @@ class DocumentController extends Controller
             }
 
             $documents->push([
-                'key' => 'needed_'.$template->id,
-                'category' => 'needed_template',
+                'key' => 'needed_'.$template->id.'_generated',
+                'category' => 'generated',
                 'label' => $template->name,
-                'filename' => basename($cleanPath),
-                'url' => '/api/download-file/'.$template->id,
+                'filename' => null,
+                'url' => '/api/generate-docx/'.$event->id.'/'.$template->id,
                 'size' => null,
             ]);
-
-            if ($hasAssignedUser) {
-                $documents->push([
-                    'key' => 'needed_'.$template->id.'_generated',
-                    'category' => 'generated',
-                    'label' => $template->name.' (kitöltött)',
-                    'filename' => null,
-                    'url' => '/api/generate-docx/'.$event->id.'/'.$template->id,
-                    'size' => null,
-                ]);
-            }
         }
 
         if (Storage::disk('public')->exists('templates/rendezvenyi_engedely_template.docx')) {
@@ -202,6 +192,58 @@ class DocumentController extends Controller
             ]);
         }
 
+        $famulusVersion = Version::where('events_id', $event->id)
+            ->where('offer_type', 'famulus')
+            ->orderByDesc('version')
+            ->first();
+
+        if ($famulusVersion) {
+            $documents->push([
+                'key' => 'uf_arajanlat',
+                'category' => 'generated',
+                'label' => 'UF árajánlat',
+                'filename' => null,
+                'url' => '/api/version/'.$famulusVersion->id.'/offer-summary',
+                'size' => null,
+            ]);
+        }
+
+        if (in_array($event->status, [
+            Status::ADATKOZLO_FELKULDESERE_VAR->value,
+            Status::ADATKOZLO_FELKULDVE->value,
+            Status::RENDEZVENY_LEZARVA->value,
+        ], true)) {
+            $adatkozloTemplate = DocTemplate::where('type', DocTemplateType::ADATKOZLO->value)
+                ->orderByDesc('id')
+                ->first();
+
+            if ($adatkozloTemplate) {
+                $documents->push([
+                    'key' => 'adatkozlo_'.$adatkozloTemplate->id,
+                    'category' => 'generated',
+                    'label' => $adatkozloTemplate->name,
+                    'filename' => null,
+                    'url' => '/api/generate-docx/'.$event->id.'/'.$adatkozloTemplate->id,
+                    'size' => null,
+                ]);
+            }
+        }
+
+        $nyilatkozatTemplate = DocTemplate::where('type', DocTemplateType::ATLATHATOSAGI_NYILATKOZAT->value)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($nyilatkozatTemplate && Storage::disk('public')->exists(str_replace('storage/', '', $nyilatkozatTemplate->path))) {
+            $documents->push([
+                'key' => 'nyilatkozat_'.$nyilatkozatTemplate->id,
+                'category' => 'generated',
+                'label' => $nyilatkozatTemplate->name,
+                'filename' => null,
+                'url' => '/api/generate-docx/'.$event->id.'/'.$nyilatkozatTemplate->id,
+                'size' => null,
+            ]);
+        }
+
         return response()->json(['documents' => $documents->values()]);
     }
 
@@ -216,28 +258,23 @@ class DocumentController extends Controller
             return response()->json(['message' => 'event or template not found!'], 404);
         }
 
-        if ($event->assignedUser->isEmpty()) {
-            return response()->json(['message' => 'assigned user not found!'], 404);
-        }
-
         $templateProcessor = new TemplateProcessor(
             storage_path('app/public'.str_replace('/storage', '', $doc->path))
         );
 
-        $this->fillCommonFields($templateProcessor, $event);
+        if (in_array('megnevezes', $templateProcessor->getVariables(), true)) {
+            $this->fillPriceOfferFields($templateProcessor, $event);
+        }
 
-        match ($doc->type) {
-            1 => $this->fillContractFields($templateProcessor, $event),
-            2 => $this->fillPriceOfferFields($templateProcessor, $event),
-            default => null,
-        };
+        $this->fillTemplateValues($templateProcessor, $event);
 
-        $fileName = 'doc_'.$doc->type.'_'.time().'.docx';
+        $fileName = Str::slug(pathinfo($doc->name, PATHINFO_FILENAME), '_')
+            .'_'.$event->id.'_'.time().'.docx';
         $tempPath = storage_path('app/public/'.$fileName);
 
         $templateProcessor->saveAs($tempPath);
 
-        return response()->download($tempPath)->deleteFileAfterSend(true);
+        return response()->download($tempPath, $fileName)->deleteFileAfterSend(true);
     }
 
     private function fillPriceOfferFields(TemplateProcessor $tp, Event $event): void
@@ -261,46 +298,103 @@ class DocumentController extends Controller
         foreach ($lines as $i => $offer) {
             $idx = $i + 1;
 
-            $netto = (float) $offer->price_per_unit;
             $brutto = (float) $offer->total_price;
-            $afa = $netto > 0 ? round((($brutto / $netto) - 1) * 100) : 0;
+            $netto = $brutto / 1.27;
 
             $tp->setValue("megnevezes#{$idx}", $offer->offer_name);
             $tp->setValue("mennyiseg#{$idx}", $offer->duration);
             $tp->setValue("netto_ar#{$idx}", number_format($netto, 0, ',', ' ').' Ft');
-            $tp->setValue("afa#{$idx}", $afa.'%');
+            $tp->setValue("afa#{$idx}", '27%');
             $tp->setValue("brutto_ar#{$idx}", number_format($brutto, 0, ',', ' ').' Ft');
+            $tp->setValue("netto#{$idx}", number_format($netto, 0, ',', ' ').' Ft');
+            $tp->setValue("brutto#{$idx}", number_format($brutto, 0, ',', ' ').' Ft');
+            $tp->setValue("osszar#{$idx}", number_format($brutto, 0, ',', ' ').' Ft');
+            $tp->setValue("összár#{$idx}", number_format($brutto, 0, ',', ' ').' Ft');
+            $tp->setValue("vegosszeg#{$idx}", number_format($brutto, 0, ',', ' ').' Ft');
+        }
+
+        if ($lines->isEmpty()) {
+            foreach (['megnevezes', 'mennyiseg', 'netto_ar', 'afa', 'brutto_ar', 'netto', 'brutto', 'osszar', 'összár', 'vegosszeg'] as $key) {
+                $tp->setValue($key.'#1', '');
+            }
         }
     }
 
-    private function fillCommonFields(TemplateProcessor $tp, Event $event): void
+    private function fillTemplateValues(TemplateProcessor $tp, Event $event): void
     {
-        $idotartam = str_replace('-', '.', $event->startDate).' (tól/től) - '.str_replace('-', '.', $event->endDate).' (ig)';
+        $assignedUser = $event->assignedUser->first();
+        $price = fn ($value) => $value ? number_format((float) $value, 0, ',', ' ').' Ft' : '–';
 
-        $tp->setValue('idotartam', $idotartam);
-        $tp->setValue('kelt_hely', 'Egyetem tér 1. '.now()->format('Y-m-d'));
-        $tp->setValue('szervezo', $event->Representative);
-        $tp->setValue('pozicio', $event->RepresentativeTitle);
-        $tp->setValue('intezmeny', $event->customerWithLegalBackgroundName);
-    }
+        $secondOrganizer = $event->moreOrganizer;
 
-    private function fillContractFields(TemplateProcessor $tp, Event $event): void
-    {
-        $tp->setValue('masreszrol', $event->customerWithLegalBackgroundName);
-        $tp->setValue('szekhely', $event->customerWithLegalBackgroundAddress);
-        $tp->setValue('torzskonyvi_nyil_szam', $event->registrationNumber);
-        $tp->setValue('adoszam', $event->customerWithLegalBackgroundTaxNumber);
-        $tp->setValue('kepviseli', $event->organizerFullName);
+        $tp->setValues([
+            'rendezvenynev' => $event->name ?? '',
+            'idotartam' => str_replace('-', '.', $event->startDate).' (tól/től) - '.str_replace('-', '.', $event->endDate).' (ig)',
+            'kezdes_datuma' => str_replace('-', '.', $event->startDate ?? ''),
+            'veges_datuma' => str_replace('-', '.', $event->endDate ?? ''),
+            'helyszin' => $event->location ?? '',
+            'cim' => $event->address ?? '',
+            'leiras' => $event->description ?? '',
+            'rendezvenytipus' => $event->type ?? '',
+            'jelleg' => $event->nature ?? '',
+            'resztvevok_szama' => $event->participants ?? '',
+            'meghatarozas' => $event->name ?? '',
 
-        $tp->setValue('targyegy', $event->targyegy);
-        $tp->setValue('targyketto', $event->targyketto);
-        $tp->setValue('targyharom', $event->targyharom);
-        $tp->setValue('meghatarozas', $event->meghatarozas);
+            'masreszrol' => $event->customerWithLegalBackgroundName ?? '',
+            'megrendelo_nev' => $event->customerWithLegalBackgroundName ?? '',
+            'szerzodo_fel' => $event->customerWithLegalBackgroundName ?? '',
+            'intezmeny' => $event->customerWithLegalBackgroundName ?? '',
+            'intezmeny_neve' => $event->customerWithLegalBackgroundName ?? '',
+            'szekhely' => $event->customerWithLegalBackgroundAddress ?? '',
+            'adoszam' => $event->customerWithLegalBackgroundTaxNumber ?? '',
+            'torzskonyvi_nyil_szam' => $event->registrationNumber ?? '',
+            'torzskonyvi_szam' => $event->registrationNumber ?? '',
+            'nyilvantartasi_szam' => $event->registrationNumber ?? '',
+            'megrendelo_telefon' => $event->customerWithLegalBackgroundPhone ?? '',
+            'megrendelo_email' => $event->customerWithLegalBackgroundEmail ?? '',
 
-        $tp->setValue('hasznalatba_ado_nev', $event->assignedUser[0]->displayName);
-        $tp->setValue('hasznalatba_ado_email', $event->assignedUser[0]->email);
-        $tp->setValue('hasznalatba_vevo_nev', $event->organizerFullName);
-        $tp->setValue('hasznalatba_vevo_email', $event->organizerEmail);
+            'kepviseli' => $event->organizerFullName ?? '',
+            'kepviselo_neve' => $event->organizerFullName ?? '',
+            'szervezo' => $event->Representative ?? '',
+            'pozicio' => $event->RepresentativeTitle ?? '',
+            'kepviselo_pozicio' => $event->RepresentativeTitle ?? '',
+
+            'szervezo_nev' => $event->organizerFullName ?? '',
+            'szervezo_telefon' => $event->organizerPhone ?? '',
+            'szervezo_email' => $event->organizerEmail ?? '',
+            'szervezo_cim' => $event->organizerAddress ?? '',
+            'masodik_szervezo_nev' => $secondOrganizer ? ($event->secondOrganizerFullName ?? '') : '–',
+            'masodik_szervezo_telefon' => $secondOrganizer ? ($event->secondOrganizerPhone ?? '') : '–',
+            'masodik_szervezo_email' => $secondOrganizer ? ($event->secondOrganizerEmail ?? '') : '–',
+            'masodik_szervezo_cim' => $secondOrganizer ? ($event->secondOrganizerAddress ?? '') : '–',
+
+            'targyegy' => $event->address ?? '',
+            'targyketto' => $event->location ?? '',
+            'targyharom' => $event->location ?? '',
+
+            'hasznalatba_ado_nev' => $assignedUser?->displayName ?? '',
+            'hasznalatba_ado_email' => $assignedUser?->email ?? '',
+            'ugyintéző_neve' => $assignedUser?->displayName ?? '',
+            'ugyintező_email' => $assignedUser?->email ?? '',
+            'hasznalatba_vevo_nev' => $event->organizerFullName ?? '',
+            'hasznalatba_vevo_email' => $event->organizerEmail ?? '',
+
+            'kelt_hely' => now()->format('Y. m. d.'),
+            'kelt_datum' => now()->format('Y. m. d.'),
+            'kelt_teljes' => 'Győr, '.now()->format('Y. m. d.'),
+
+            'famulus_ar' => $price($event->famulusPrice),
+            'dorm_ar' => $price($event->dormPrice),
+            'egyetem_ar' => $price($event->uniPrice),
+            'vegosszeg' => $price($event->uniPrice),
+            'osszar' => $price($event->uniPrice),
+            'összár' => $price($event->uniPrice),
+            'brutto' => $price($event->uniPrice),
+            'netto' => $price($event->uniPrice ? (float) $event->uniPrice / 1.27 : 0),
+            'afa' => $event->uniPrice ? '27%' : '–',
+            'brutto_ar' => $price($event->uniPrice),
+            'netto_ar' => $price($event->uniPrice ? (float) $event->uniPrice / 1.27 : 0),
+        ]);
     }
 
     public function generateEngedely(string $eventId)
@@ -405,6 +499,14 @@ class DocumentController extends Controller
         $templateProcessor->setValue('famulus_ar', $event->famulusPrice ? number_format($event->famulusPrice, 0, ',', ' ').' Ft' : '–');
         $templateProcessor->setValue('dorm_ar', $event->dormPrice ? number_format($event->dormPrice, 0, ',', ' ').' Ft' : '–');
         $templateProcessor->setValue('egyetem_ar', $event->uniPrice ? number_format($event->uniPrice, 0, ',', ' ').' Ft' : '–');
+        $templateProcessor->setValue('vegosszeg', $event->uniPrice ? number_format($event->uniPrice, 0, ',', ' ').' Ft' : '–');
+        $templateProcessor->setValue('osszar', $event->uniPrice ? number_format($event->uniPrice, 0, ',', ' ').' Ft' : '–');
+        $templateProcessor->setValue('összár', $event->uniPrice ? number_format($event->uniPrice, 0, ',', ' ').' Ft' : '–');
+        $templateProcessor->setValue('brutto', $event->uniPrice ? number_format($event->uniPrice, 0, ',', ' ').' Ft' : '–');
+        $templateProcessor->setValue('netto', $event->uniPrice ? number_format((float) $event->uniPrice / 1.27, 0, ',', ' ').' Ft' : '–');
+        $templateProcessor->setValue('afa', $event->uniPrice ? '27%' : '–');
+        $templateProcessor->setValue('brutto_ar', $event->uniPrice ? number_format($event->uniPrice, 0, ',', ' ').' Ft' : '–');
+        $templateProcessor->setValue('netto_ar', $event->uniPrice ? number_format((float) $event->uniPrice / 1.27, 0, ',', ' ').' Ft' : '–');
 
         $templateProcessor->setValue('status', $this->statusLabel($event->status));
         $templateProcessor->setValue('filePath', $event->filePath ?? '');
@@ -580,10 +682,16 @@ class DocumentController extends Controller
                 ->get();
         }
 
-        $fileName = 'ajanlat_osszesito_'.$version->offer_type.'_v'.$version->version.'_'.$event->id.'_'.time().'.docx';
+        $doc = $version->offer_type === 'famulus'
+            ? DocTemplate::where('type', 3)->orderByDesc('id')->first()
+            : DocTemplate::where('type', 1)->orderByDesc('id')->first();
+
+        $baseName = $doc
+            ? Str::slug(pathinfo($doc->name, PATHINFO_FILENAME), '_')
+            : 'ajanlat_osszesito';
+        $fileName = $baseName.'_v'.$version->version.'_'.$event->id.'_'.time().'.docx';
         $tempPath = storage_path('app/public/'.$fileName);
 
-        $doc = DocTemplate::where('type', 3)->orderByDesc('id')->first();
         $templatePath = $doc
             ? storage_path('app/public'.str_replace('/storage', '', $doc->path))
             : null;
@@ -591,6 +699,7 @@ class DocumentController extends Controller
         if ($templatePath && file_exists($templatePath)) {
             $templateProcessor = new TemplateProcessor($templatePath);
             $this->fillVersionSummaryFields($templateProcessor, $event, $version, $items);
+            $this->fillTemplateValues($templateProcessor, $event);
             $templateProcessor->saveAs($tempPath);
         } else {
             $this->buildVersionSummaryDocx($event, $version, $items, $tempPath);
@@ -620,30 +729,50 @@ class DocumentController extends Controller
         $tp->setValue('letrehozva', $version->created_at?->format('Y.m.d H:i') ?? '–');
         $tp->setValue('indoklas', $version->reason ?: '–');
         $tp->setValue('megjegyzes', $version->comment ?: '–');
-        $tp->setValue('vegosszeg', number_format((float) $items->sum('total_price'), 0, ',', ' ').' Ft');
 
-        $rowCount = max($items->count(), 1);
-        $tp->cloneRow('megnevezes', $rowCount);
+        $bruttoOsszeg = (float) $items->sum('total_price');
+        $nettoOsszeg = $bruttoOsszeg / 1.27;
+        $price = fn ($value) => number_format($value, 0, ',', ' ').' Ft';
 
-        foreach ($items as $i => $offer) {
-            $idx = $i + 1;
+        if (in_array('megnevezes', $tp->getVariables(), true)) {
+            $rowCount = max($items->count(), 1);
+            $tp->cloneRow('megnevezes', $rowCount);
 
-            $netto = (float) $offer->price_per_unit;
-            $brutto = (float) $offer->total_price;
-            $afa = $netto > 0 ? round((($brutto / $netto) - 1) * 100) : 0;
+            foreach ($items as $i => $offer) {
+                $idx = $i + 1;
 
-            $tp->setValue("megnevezes#{$idx}", $offer->offer_name);
-            $tp->setValue("mennyiseg#{$idx}", $offer->duration);
-            $tp->setValue("netto_ar#{$idx}", number_format($netto, 0, ',', ' ').' Ft');
-            $tp->setValue("afa#{$idx}", $afa.'%');
-            $tp->setValue("brutto_ar#{$idx}", number_format($brutto, 0, ',', ' ').' Ft');
-        }
+                $brutto = (float) $offer->total_price;
+                $netto = $brutto / 1.27;
 
-        if ($items->isEmpty()) {
-            foreach (['megnevezes', 'mennyiseg', 'netto_ar', 'afa', 'brutto_ar'] as $key) {
-                $tp->setValue($key.'#1', '');
+                $tp->setValue("megnevezes#{$idx}", $offer->offer_name);
+                $tp->setValue("mennyiseg#{$idx}", $offer->duration);
+                $tp->setValue("netto_ar#{$idx}", $price($netto));
+                $tp->setValue("afa#{$idx}", '27%');
+                $tp->setValue("brutto_ar#{$idx}", $price($brutto));
+                $tp->setValue("netto#{$idx}", $price($netto));
+                $tp->setValue("brutto#{$idx}", $price($brutto));
+                $tp->setValue("osszar#{$idx}", $price($brutto));
+                $tp->setValue("összár#{$idx}", $price($brutto));
+                $tp->setValue("vegosszeg#{$idx}", $price($brutto));
+            }
+
+            if ($items->isEmpty()) {
+                foreach (['megnevezes', 'mennyiseg', 'netto_ar', 'afa', 'brutto_ar', 'netto', 'brutto', 'osszar', 'összár', 'vegosszeg'] as $key) {
+                    $tp->setValue($key.'#1', '');
+                }
             }
         }
+
+        $tp->setValues([
+            'vegosszeg' => $price($bruttoOsszeg),
+            'osszar' => $price($bruttoOsszeg),
+            'összár' => $price($bruttoOsszeg),
+            'brutto' => $price($bruttoOsszeg),
+            'netto' => $price($nettoOsszeg),
+            'afa' => '27%',
+            'brutto_ar' => $price($bruttoOsszeg),
+            'netto_ar' => $price($nettoOsszeg),
+        ]);
     }
 
     private function buildVersionSummaryDocx(Event $event, Version $version, $items, string $tempPath): void

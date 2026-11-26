@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DocTemplateType;
 use App\Enums\Status;
 use App\Mail\RejectMail;
 use App\Models\AssignUser;
+use App\Models\DocTemplate;
 use App\Models\DormOffers;
 use App\Models\Event;
 use App\Models\FamulusOffers;
@@ -539,7 +541,11 @@ class EventController extends Controller
 
         $event = Event::findOrFail($req->id);
 
-        foreach ($req->docIds as $value) {
+        $contractTemplateIds = DocTemplate::whereIn('id', $req->docIds)
+            ->where('type', DocTemplateType::SZERZODES->value)
+            ->pluck('id');
+
+        foreach ($contractTemplateIds as $value) {
 
             NeededDoc::create([
                 'events_id' => $event->id,
