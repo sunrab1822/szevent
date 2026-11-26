@@ -27,7 +27,7 @@ class UpdateStatusAfterEndet extends Command
     public function handle()
     {
         Event::where('endDate', '<', now()->toDateString())
-                ->where('status', 'Megvalósulásra vár')
+                ->whereIn('status', ['Megvalósulásra vár', 'Szerződés kész'])
                 ->update(['status' => 'Megvalósult - UF igazolásra vár']);
     }
 }
