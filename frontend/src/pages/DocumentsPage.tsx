@@ -76,6 +76,10 @@ const DocumentsPage = () => {
     const formatDocumentType = (type?: number) => {
         if (type === DOCTYPES.Arajanlat) return "Árajánlat";
         if (type === DOCTYPES.Szerzodes) return "Szerződés";
+        if (type === DOCTYPES.EgyediMegrendeloUF) return "Egyedi megrendelő UF";
+        if (type === DOCTYPES.Egyeb) return "Egyéb";
+        if (type === DOCTYPES.Adatkozlo) return "Adatközlő";
+        if (type === DOCTYPES.AtlathatosagiNyilatkozat) return "Átláthatósági nyilatkozat";
         return "Ismeretlen típus";
     };
 
@@ -163,6 +167,10 @@ const DocumentsPage = () => {
                             </option>
                             <option value={DOCTYPES.Arajanlat}>Árajánlat</option>
                             <option value={DOCTYPES.Szerzodes}>Szerződés</option>
+                            <option value={DOCTYPES.EgyediMegrendeloUF}>Egyedi megrendelő UF</option>
+                            <option value={DOCTYPES.Egyeb}>Egyéb</option>
+                            <option value={DOCTYPES.Adatkozlo}>Adatközlő</option>
+                            <option value={DOCTYPES.AtlathatosagiNyilatkozat}>Átláthatósági nyilatkozat</option>
                         </select>
                     </div>
                 </div>

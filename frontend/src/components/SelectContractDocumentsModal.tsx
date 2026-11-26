@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, FileText } from "lucide-react";
 import { Modal } from "antd";
 import type { Document } from "../entitys/document";
+import { DOCTYPES } from "../entitys/docTypes";
 import { useSelector } from "../redux/store";
 
 interface SelectContractDocumentsModalProps {
@@ -13,6 +14,8 @@ interface SelectContractDocumentsModalProps {
 const SelectContractDocumentsModal = ({ open, onClose, onSubmit }: SelectContractDocumentsModalProps) => {
     const { documents } = useSelector((state) => state.documents);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    const contractDocuments = documents.filter((document) => document.type === DOCTYPES.Szerzodes);
 
     useEffect(() => {
         if (!open) {
@@ -59,13 +62,13 @@ const SelectContractDocumentsModal = ({ open, onClose, onSubmit }: SelectContrac
             }
         >
             <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto py-2 pr-1">
-                {documents.length === 0 && (
+                {contractDocuments.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-12 text-[#3e484c]/40">
                         <FileText size={32} className="mb-2" />
                         <p className="text-sm">Nincs elérhető dokumentum.</p>
                     </div>
                 )}
-                {documents.map((document: Document) => {
+                {contractDocuments.map((document: Document) => {
                     const selected = selectedIds.includes(document.id);
 
                     return (

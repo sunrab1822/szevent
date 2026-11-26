@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Download, FileText, Upload } from "lucide-react";
 import { Modal } from "antd";
-import { downloadDocument } from "../actions/downloadDocument";
+import { downloadGeneratedDocument } from "../actions/downloadGeneratedDocument";
 import { getNeededDocuments } from "../actions/getNeededDocuments";
 import type { Document } from "../entitys/document";
 import { showActionError } from "../utils/actionFeedback";
@@ -75,7 +75,11 @@ const LegalDocumentReviewModal = ({ eventId, open, onClose, onConfirmSave, confi
     const canSave = documents.length > 0 && documents.every((document) => documentStates[document.id]?.downloaded);
 
     const handleDownload = async (document: Document) => {
-        await downloadDocument(document.id, document.name);
+        const success = await downloadGeneratedDocument(eventId, document.id, document.name);
+        if (!success) {
+            showActionError();
+            return;
+        }
         setDocumentStates((prev) => ({
             ...prev,
             [document.id]: {
@@ -204,16 +208,14 @@ const LegalDocumentReviewModal = ({ eventId, open, onClose, onConfirmSave, confi
                                                     <p className="mt-1 text-xs text-[#3e484c]/50">{formatDate(document.created_at)}</p>
                                                     <div className="mt-3 flex flex-wrap gap-2 text-xs">
                                                         <span
-                                                            className={`rounded-full px-2.5 py-1 font-medium ${
-                                                                downloaded ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
-                                                            }`}
+                                                            className={`rounded-full px-2.5 py-1 font-medium ${downloaded ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
+                                                                }`}
                                                         >
                                                             {downloaded ? "Letöltve" : "Letöltés szükséges"}
                                                         </span>
                                                         <span
-                                                            className={`rounded-full px-2.5 py-1 font-medium ${
-                                                                uploadedFile ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
-                                                            }`}
+                                                            className={`rounded-full px-2.5 py-1 font-medium ${uploadedFile ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
+                                                                }`}
                                                         >
                                                             {uploadedFile ? `Feltöltve: ${uploadedFile.name}` : "Feltöltés opcionális"}
                                                         </span>
@@ -232,11 +234,10 @@ const LegalDocumentReviewModal = ({ eventId, open, onClose, onConfirmSave, confi
                                             </button>
 
                                             <label
-                                                className={`flex items-center justify-center gap-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                                                    downloaded
+                                                className={`flex items-center justify-center gap-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${downloaded
                                                         ? "bg-primary-light hover:bg-primary-light/80 cursor-pointer text-white"
                                                         : "cursor-not-allowed bg-gray-100 text-gray-400"
-                                                }`}
+                                                    }`}
                                             >
                                                 <Upload size={14} />
                                                 {uploadedFile ? "Fájl cseréje" : "Feltöltés"}
