@@ -80,6 +80,7 @@ const DocumentsPage = () => {
         if (type === DOCTYPES.Egyeb) return "Egyéb";
         if (type === DOCTYPES.Adatkozlo) return "Adatközlő";
         if (type === DOCTYPES.AtlathatosagiNyilatkozat) return "Átláthatósági nyilatkozat";
+        if (type === DOCTYPES.RendezvenyiEngedely) return "Rendezvényi engedélyeztető";
         return "Ismeretlen típus";
     };
 
@@ -171,6 +172,7 @@ const DocumentsPage = () => {
                             <option value={DOCTYPES.Egyeb}>Egyéb</option>
                             <option value={DOCTYPES.Adatkozlo}>Adatközlő</option>
                             <option value={DOCTYPES.AtlathatosagiNyilatkozat}>Átláthatósági nyilatkozat</option>
+                            <option value={DOCTYPES.RendezvenyiEngedely}>Rendezvényi engedélyeztető</option>
                         </select>
                     </div>
                 </div>

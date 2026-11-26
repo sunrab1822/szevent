@@ -10,4 +10,5 @@ enum DocTemplateType: int
     case EGYEB = 4;
     case ADATKOZLO = 5;
     case ATLATHATOSAGI_NYILATKOZAT = 6;
+    case RENDEZVENYI_ENGEDELY = 7;
 }
