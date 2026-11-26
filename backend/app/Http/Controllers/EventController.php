@@ -278,12 +278,19 @@ class EventController extends Controller
         StatusChangeLogController::log($previousStatus, $event->status, $event->id, Auth::id(), $event->rejectReason);
         $event->delete();
 
-        Mail::to($event->organizerEmail)->send(new RejectMail(
-            $event->organizerFullName,
-            $event->name,
-            $event->rejectReason ?? '-',
-            'Sajnálattal értesítjük, hogy rendezvényét nem tudtuk jóváhagyni.'
-        ));
+        try {
+            Mail::to($event->organizerEmail)->send(new RejectMail(
+                $event->organizerFullName,
+                $event->name,
+                $event->rejectReason ?? '-',
+                'Sajnálattal értesítjük, hogy rendezvényét nem tudtuk jóváhagyni.'
+            ));
+        } catch (\Throwable $e) {
+            try {
+                report($e);
+            } catch (\Throwable) {
+            }
+        }
 
         return response()->json();
     }
