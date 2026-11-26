@@ -54,12 +54,19 @@ class StatusChangeLogController extends Controller
 
         $event = Event::withTrashed()->find($event_id);
 
-        User::whereIn('id', $recipientIds)
-            ->where('email_notifications', true)
-            ->whereNotNull('email')
-            ->where('email', '!=', '')
-            ->each(fn ($user) => Mail::to($user->email)->send(
-                new NotificationMail($user->displayName ?: $user->name, $event?->name, $message)
-            ));
+        try {
+            User::whereIn('id', $recipientIds)
+                ->where('email_notifications', true)
+                ->whereNotNull('email')
+                ->where('email', '!=', '')
+                ->each(fn ($user) => Mail::to($user->email)->send(
+                    new NotificationMail($user->displayName ?: $user->name, $event?->name, $message)
+                ));
+        } catch (\Throwable $e) {
+            try {
+                report($e);
+            } catch (\Throwable) {
+            }
+        }
     }
 }
